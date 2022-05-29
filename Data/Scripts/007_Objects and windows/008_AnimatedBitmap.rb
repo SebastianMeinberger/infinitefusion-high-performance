@@ -4,14 +4,14 @@
 class AnimatedBitmap
   def initialize(file, hue = 0)
     raise "Filename is nil (missing graphic)." if file.nil?
-    path = file
+    path     = file
     filename = ""
-    if file.last != '/' # Isn't just a directory
+    if file.last != "/"   # Isn't just a directory
       split_file = file.split(/[\\\/]/)
       filename = split_file.pop
-      path = split_file.join('/') + '/'
+      path = split_file.join("/") + "/"
     end
-    if filename[/^\[\d+(?:,\d+)?\]/] # Starts with 1 or 2 numbers in square brackets
+    if filename[/^\[\d+(?:,\d+)?\]/]   # Starts with 1 or 2 numbers in square brackets
       @bitmap = PngAnimatedBitmap.new(path, filename, hue)
     else
       @bitmap = GifBitmap.new(path, filename, hue)
@@ -127,15 +127,15 @@ class PngAnimatedBitmap
 
   # Creates an animated bitmap from a PNG file.
   def initialize(dir, filename, hue = 0)
-    @frames = []
+    @frames       = []
     @currentFrame = 0
-    @framecount = 0
+    @framecount   = 0
     panorama = RPG::Cache.load_bitmap(dir, filename, hue)
-    if filename[/^\[(\d+)(?:,(\d+))?\]/] # Starts with 1 or 2 numbers in brackets
+    if filename[/^\[(\d+)(?:,(\d+))?\]/]   # Starts with 1 or 2 numbers in brackets
       # File has a frame count
       numFrames = $1.to_i
-      delay = $2.to_i
-      delay = 10 if delay == 0
+      delay     = $2.to_i
+      delay     = 10 if delay == 0
       raise "Invalid frame count in #{filename}" if numFrames <= 0
       raise "Invalid frame delay in #{filename}" if delay <= 0
       if panorama.width % numFrames != 0
@@ -143,7 +143,7 @@ class PngAnimatedBitmap
       end
       @frameDelay = delay
       subWidth = panorama.width / numFrames
-      for i in 0...numFrames
+      numFrames.times do |i|
         subBitmap = BitmapWrapper.new(subWidth, panorama.height)
         subBitmap.blt(0, 0, panorama, Rect.new(subWidth * i, 0, subWidth, panorama.height))
         @frames.push(subBitmap)
@@ -158,16 +158,11 @@ class PngAnimatedBitmap
     return @frames[index]
   end
 
-  def width
-    self.bitmap.width;
-  end
-
-  def height
-    self.bitmap.height;
-  end
+  def width;  self.bitmap.width;  end
+  def height; self.bitmap.height; end
 
   def deanimate
-    for i in 1...@frames.length
+    (1...@frames.length).each do |i|
       @frames[i].dispose
     end
     @frames = [@frames[0]]
@@ -225,9 +220,7 @@ class PngAnimatedBitmap
   def copy
     x = self.clone
     x.frames = x.frames.clone
-    for i in 0...x.frames.length
-      x.frames[i] = x.frames[i].copy
-    end
+    x.frames.each_with_index { |frame, i| x.frames[i] = frame.copy }
     return x
   end
 end
@@ -240,9 +233,9 @@ class GifBitmap
 
   # Creates a bitmap from a GIF file. Can also load non-animated bitmaps.
   def initialize(dir, filename, hue = 0)
-    @bitmap = nil
+    @bitmap   = nil
     @disposed = false
-    filename = "" if !filename
+    filename  = "" if !filename
     begin
       @bitmap = RPG::Cache.load_bitmap(dir, filename, hue)
     rescue

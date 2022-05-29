@@ -3,9 +3,9 @@ module GameData
     def self.check_graphic_file(path, species, form = 0, gender = 0, shiny = false, shadow = false, subfolder = "")
       try_subfolder = sprintf("%s/", subfolder)
       try_species = species
-      try_form = (form > 0) ? sprintf("_%d", form) : ""
-      try_gender = (gender == 1) ? "_female" : ""
-      try_shadow = (shadow) ? "_shadow" : ""
+      try_form    = (form > 0) ? sprintf("_%d", form) : ""
+      try_gender  = (gender == 1) ? "_female" : ""
+      try_shadow  = (shadow) ? "_shadow" : ""
       factors = []
       factors.push([4, sprintf("%s shiny/", subfolder), try_subfolder]) if shiny
       factors.push([3, try_shadow, ""]) if shadow
@@ -13,21 +13,16 @@ module GameData
       factors.push([1, try_form, ""]) if form > 0
       factors.push([0, try_species, "000"])
       # Go through each combination of parameters in turn to find an existing sprite
-      for i in 0...2 ** factors.length
+      (2**factors.length).times do |i|
         # Set try_ parameters for this combination
         factors.each_with_index do |factor, index|
-          value = ((i / (2 ** index)) % 2 == 0) ? factor[1] : factor[2]
+          value = ((i / (2**index)).even?) ? factor[1] : factor[2]
           case factor[0]
-          when 0 then
-            try_species = value
-          when 1 then
-            try_form = value
-          when 2 then
-            try_gender = value
-          when 3 then
-            try_shadow = value
-          when 4 then
-            try_subfolder = value # Shininess
+          when 0 then try_species   = value
+          when 1 then try_form      = value
+          when 2 then try_gender    = value
+          when 3 then try_shadow    = value
+          when 4 then try_subfolder = value   # Shininess
           end
         end
         # Look for a graphic matching this combination's parameters
@@ -57,10 +52,6 @@ module GameData
       return self.check_graphic_file("Graphics/Pokemon/", species, form, gender, shiny, shadow, "Back")
     end
 
-    # def self.egg_sprite_filename(species, form)
-    #   ret = self.check_egg_graphic_file("Graphics/Pokemon/Eggs/", species, form)
-    #   return (ret) ? ret : pbResolveBitmap("Graphics/Pokemon/Eggs/000")
-    # end
     def self.egg_sprite_filename(species, form)
       dexNum = getDexNumberForSpecies(species)
       bitmapFileName = sprintf("Graphics/Battlers/Eggs/%03d", dexNum) rescue nil
@@ -183,7 +174,8 @@ module GameData
       ret = pbResolveBitmap(sprintf("Graphics/Pokemon/Shadow/%s", species_data.species))
       return ret if ret
       # Use general shadow graphic
-      return pbResolveBitmap(sprintf("Graphics/Pokemon/Shadow/%d", species_data.shadow_size))
+      metrics_data = GameData::SpeciesMetrics.get_species_form(species_data.species, form)
+      return pbResolveBitmap(sprintf("Graphics/Pokemon/Shadow/%d", metrics_data.shadow_size))
     end
 
     def self.shadow_bitmap(species, form = 0)
@@ -198,7 +190,7 @@ module GameData
 
     #===========================================================================
 
-    def self.check_cry_file(species, form)
+    def self.check_cry_file(species, form, suffix = "")
       species_data = self.get_species_form(species, form)
       return nil if species_data.nil?
       if species_data.is_fusion
@@ -206,19 +198,19 @@ module GameData
       end
 
       if form > 0
-        ret = sprintf("Cries/%s_%d", species_data.species, form)
+        ret = sprintf("Cries/%s_%d%s", species_data.species, form, suffix)
         return ret if pbResolveAudioSE(ret)
       end
-      ret = sprintf("Cries/%s", species_data.species)
+      ret = sprintf("Cries/%s%s", species_data.species, suffix)
       return (pbResolveAudioSE(ret)) ? ret : nil
     end
 
-    def self.cry_filename(species, form = 0)
-      return self.check_cry_file(species, form)
+    def self.cry_filename(species, form = 0, suffix = "")
+      return self.check_cry_file(species, form || 0, suffix)
     end
 
-    def self.cry_filename_from_pokemon(pkmn)
-      return self.check_cry_file(pkmn.species, pkmn.form)
+    def self.cry_filename_from_pokemon(pkmn, suffix = "")
+      return self.check_cry_file(pkmn.species, pkmn.form, suffix)
     end
 
     def self.play_cry_from_species(species, form = 0, volume = 90, pitch = 100)
@@ -227,37 +219,42 @@ module GameData
       pbSEPlay(RPG::AudioFile.new(filename, volume, pitch)) rescue nil
     end
 
-    def self.play_cry_from_pokemon(pkmn, volume = 90, pitch = nil)
+    def self.play_cry_from_pokemon(pkmn, volume = 90, pitch = 100)
       return if !pkmn || pkmn.egg?
       filename = self.cry_filename_from_pokemon(pkmn)
       return if !filename
-      pitch ||= 75 + (pkmn.hp * 25 / pkmn.totalhp)
+      pitch ||= 100
       pbSEPlay(RPG::AudioFile.new(filename, volume, pitch)) rescue nil
     end
 
-    def self.play_cry(pkmn, volume = 90, pitch = nil)
+    def self.play_cry(pkmn, volume = 90, pitch = 100)
       if pkmn.is_a?(Pokemon)
         self.play_cry_from_pokemon(pkmn, volume, pitch)
       else
-        self.play_cry_from_species(pkmn, nil, volume, pitch)
+        self.play_cry_from_species(pkmn, 0, volume, pitch)
       end
     end
 
-    def self.cry_length(species, form = 0, pitch = 100)
+    def self.cry_length(species, form = 0, pitch = 100, suffix = "")
+      pitch ||= 100
       return 0 if !species || pitch <= 0
       pitch = pitch.to_f / 100
       ret = 0.0
       if species.is_a?(Pokemon)
         if !species.egg?
-          filename = pbResolveAudioSE(GameData::Species.cry_filename_from_pokemon(species))
+          filename = self.cry_filename_from_pokemon(species, suffix)
+          filename = self.cry_filename_from_pokemon(species) if !filename && !nil_or_empty?(suffix)
+          filename = pbResolveAudioSE(filename)
           ret = getPlayTime(filename) if filename
         end
       else
-        filename = pbResolveAudioSE(GameData::Species.cry_filename(species, form))
+        filename = self.cry_filename(species, form, suffix)
+        filename = self.cry_filename(species, form) if !filename && !nil_or_empty?(suffix)
+        filename = pbResolveAudioSE(filename)
         ret = getPlayTime(filename) if filename
       end
-      ret /= pitch # Sound played at a lower pitch lasts longer
-      return (ret * Graphics.frame_rate).ceil + 4 # 4 provides a buffer between sounds
+      ret /= pitch   # Sound played at a lower pitch lasts longer
+      return ret
     end
   end
 end
