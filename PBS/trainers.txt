@@ -1396,8 +1396,8 @@ Pokemon = B23H41,11
 #----------------
 
 [TEAMROCKET_M,Francis]
-Pokemon = ZUBAT,11 
-Pokemon = B41H88,11 
+Pokemon = ZUBAT,10
+Pokemon = B14H41,13
 #----------------
 
 [TEAMROCKET_F,Samantha]
