@@ -1470,7 +1470,7 @@ class PokemonStorageScene
        [_INTL("Exit"),446,326,2,buttonbase,buttonshadow,1],
     ])
     pokemon = nil
-    if @screen.pbHeldPokemon
+    if @screen.pbHeldPokemon &&  !@screen.fusionMode
       pokemon = @screen.pbHeldPokemon
     elsif selection>=0
       pokemon = (party) ? party[selection] : @storage[@storage.currentBox,selection]
@@ -1556,6 +1556,7 @@ class PokemonStorageScreen
   attr_reader :scene
   attr_reader :storage
   attr_accessor :heldpkmn
+  attr_accessor :fusionMode
 
   def initialize(scene,storage)
     @scene = scene
