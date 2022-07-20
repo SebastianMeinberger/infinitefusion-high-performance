@@ -802,6 +802,10 @@ end
 def setPokemonLevel(pokemon1, pokemon2, superSplicers)
   lv1 = @pokemon1.level
   lv2 = @pokemon2.level
+  return calculateFusedPokemonLevel(lv1,lv2,superSplicers)
+end
+
+def calculateFusedPokemonLevel(lv1, lv2, superSplicers)
   if superSplicers
     if lv1 > lv2
       return lv1
