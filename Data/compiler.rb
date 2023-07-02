@@ -3380,7 +3380,7 @@ def pbFixEventUse(event,mapID,mapdata)
               pbPushText(newEvents,_INTL("\\GYou have no room left in the Bag."),oldIndent+2)
               pbPushBranchEnd(newEvents,oldIndent+2)
               pbPushElse(newEvents,oldIndent+1)
-              pbPushText(newEvents,_INTL("\\GYou don't have enough money."),oldIndent+1)
+              pbPushText(newEvents,_INTL("\\GYou don't have enough."),oldIndent+1)
               pbPushBranchEnd(newEvents,oldIndent+1)
             end
             list[i,0]=newEvents # insert 'newEvents' at index 'i'
