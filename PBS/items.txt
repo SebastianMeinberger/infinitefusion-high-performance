@@ -49,13 +49,13 @@
 49,HEARTSCALE,Heart Scale,Heart Scales,1,100,"A pretty, heart-shaped scale that is extremely rare. It glows faintly in the colors of the rainbow.",0,0,0,
 50,SLOWPOKETAIL,Slowpoke Tail,Slowpoke Tails,1,10000,"A very tasty tail of something. It can be sold at a high price to shops.",0,0,0,
 51,RAREBONE,Rare Bone,Rare Bones,1,2000,"A bone that is extremely valuable for Pokémon archaeology. It can be sold for a high price to shops.",0,0,0,
-52,RELICCOPPER,Relic Copper,Relic Coppers,1,2000,"A copper coin used in a civilization about 3,000 years ago. A maniac will buy it for a high price.",0,0,0,
-53,RELICSILVER,Relic Silver,Relic Silvers,1,5000,"A silver coin used in a civilization about 3,000 years ago. A maniac will buy it for a high price.",0,0,0,
-54,RELICGOLD,Relic Gold,Relic Golds,1,10000,"A gold coin used in a civilization about 3,000 years ago. A maniac will buy it for a high price.",0,0,0,
-55,RELICVASE,Relic Vase,Relic Vases,1,5000,"A vase made in a civilization about 3,000 years ago. A maniac will buy it for a high price.",0,0,0,
-56,RELICBAND,Relic Band,Relic Bands,1,2000,"A bracelet made in a civilization about 3,000 years ago. A maniac will buy it for a high price.",0,0,0,
-57,RELICSTATUE,Relic Statue,Relic Statues,1,10000,"A stone figure made in a civilization about 3,000 years ago. A maniac will buy it for a high price.",0,0,0,
-58,RELICCROWN,Relic Crown,Relic Crowns,1,20000,"A crown made in a civilization about 3,000 years ago. A maniac will buy it for a high price.",0,0,0,
+52,RELICCOPPER,Relic Copper,Relic Coppers,1,2000,"A copper coin used in a civilization about 3,000 years ago. It can be sold for a high price.",0,0,0,
+53,RELICSILVER,Relic Silver,Relic Silvers,1,5000,"A silver coin used in a civilization about 3,000 years ago. It can be sold for a high price.",0,0,0,
+54,RELICGOLD,Relic Gold,Relic Golds,1,10000,"A gold coin used in a civilization about 3,000 years ago. It can be sold for a high price.",0,0,0,
+55,RELICVASE,Relic Vase,Relic Vases,1,5000,"A vase made in a civilization about 3,000 years ago. It can be sold for a high price.",0,0,0,
+56,RELICBAND,Relic Band,Relic Bands,1,2000,"A bracelet made in a civilization about 3,000 years ago. It can be sold for a high price.",0,0,0,
+57,RELICSTATUE,Relic Statue,Relic Statues,1,10000,"A stone figure made in a civilization about 3,000 years ago. It can be sold for a high price.",0,0,0,
+58,RELICCROWN,Relic Crown,Relic Crowns,1,20000,"A crown made in a civilization about 3,000 years ago. It can be sold for a high price.",0,0,0,
 59,GROWTHMULCH,Growth Mulch,Growth Mulch,1,200,"A fertilizer to be spread on soft soil in regions where Berries are grown. A maniac will buy it for a high price.",0,0,11,
 60,DAMPMULCH,Damp Mulch,Damp Mulch,1,200,"A fertilizer to be spread on soft soil in regions where Berries are grown. A maniac will buy it for a high price.",0,0,11,
 61,STABLEMULCH,Stable Mulch,Stable Mulch,1,200,"A fertilizer to be spread on soft soil in regions where Berries are grown. A maniac will buy it for a high price.",0,0,11,
@@ -668,6 +668,8 @@
 660,LINKINGCORD,Linking Cord,Linking Cords,1,6000,"A cable exuding a mysterious energy. It’s loved by certain Pokémon.",1,0,7,
 661,INVISIBALL,Invisiball,Invisiball,3,200,"A Pokéball that is completely invisble to the human eye. You shouldn't be able to obtain this item",0,4,4,
 662,DREAMMIRROR,Dream Mirror,Dream Mirrors,8,0,"A strange mirror that allows you to peak into the Dream World for a brief instant.",2,0,6,
+663,BOXLINK,Box Link,Box Link,8,0,"A small, portable device that allows you to access the Pokémon storage system. There are some places where it won't work. ",2,0,6,
+
 
 
 
