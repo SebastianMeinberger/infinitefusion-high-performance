@@ -1815,7 +1815,7 @@ Pokemon = B109H33,26 #Nidofing,
 [TEAMROCKET_M,Joffrey]
 Pokemon = KOFFING,21 #Tentata,
 	Ball = ROCKETBALL
-Pokemon = B20H73,23 #Tentaicate,
+Pokemon = B42H20,23 #RATICATE/GOLBAT,
 	Ball = ROCKETBALL
 ########################
 
@@ -1843,7 +1843,7 @@ Pokemon = B100H132,26 #Ditorb,
 	Moves = TRANSFORM,CHARGEBEAM,LIGHTSCREEN,SONICBOOM
 	AbilityIndex = 0
 	Ball = ROCKETBALL
-Pokemon = B147H88,25 #Gritini,
+Pokemon = B89h42,25 #muk / golbat,
 	Ball = ROCKETBALL
 #######################
 
