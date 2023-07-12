@@ -38,8 +38,8 @@ class PokemonBoxIcon < IconSprite
     bitmapFileName = sprintf("Graphics/Pokemon/FusionIcons/icon%03d", dexNum)
     headPokeFileName = GameData::Species.icon_filename(headPoke)
     bitmapPath = sprintf("%s.png", bitmapFileName)
-    IO.copy_stream(headPokeFileName, bitmapPath)
-    result_icon = AnimatedBitmap.new(bitmapPath)
+    generated_new_icon = generateFusionIcon(headPokeFileName,bitmapPath)
+    result_icon = generated_new_icon ? AnimatedBitmap.new(bitmapPath) : icon1
 
     for i in 0..icon1.width - 1
       for j in ((icon1.height / 2) + Settings::FUSION_ICON_SPRITE_OFFSET)..icon1.height - 1
@@ -1572,6 +1572,14 @@ class PokemonStorageScene
     end
     pbDrawTextPositions(overlay, textstrings)
     @sprites["pokemon"].setPokemonBitmap(pokemon)
+
+    if pokemon.egg?
+      @sprites["pokemon"].zoom_x = Settings::EGGSPRITE_SCALE
+      @sprites["pokemon"].zoom_y = Settings::EGGSPRITE_SCALE
+    else
+      @sprites["pokemon"].zoom_x = Settings::FRONTSPRITE_SCALE
+      @sprites["pokemon"].zoom_y = Settings::FRONTSPRITE_SCALE
+    end
   end
 
   def update
