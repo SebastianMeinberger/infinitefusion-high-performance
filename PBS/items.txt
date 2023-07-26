@@ -547,11 +547,11 @@
 539,SURFBOARD,Surfboard,Surfboards,8,0,"A board that can be used to cross water without the use of a HM.",2,0,6
 540,TELEPORTER,Teleporter,Teleporters,8,0,"A small device that can be used to teleport to a city without the use of a HM.",2,0,6
 541,SCUBAGEAR,Scuba Gear,Scuba Gears,8,0,"Diving equipment that can be used to dive underwater without the use of a HM.",2,0,6
-542,LEVER,Handtruck,Handtrucks,8,0,"A utility dolly that allows to move large rocks without the use of a HM.",2,0,6
+542,LEVER,Dolly,Dollies,8,0,"A utility dolly that allows to move large rocks without the use of a HM.",2,0,6
 543,DEBUGGER,Debugger,Debuggers,8,0,"Use this to return to the last Pokémon Center you've visited if you get stuck somewhere.",2,0,6
 544,WOODENPLANKS,Wooden Planks,Wooden Planks,8,0,A set of wooden planks used for construction.,0,0,6,
 545,BRICKS,Bricks,Bricks,8,0,A set of bricks used for construction.,0,0,6,
-546,ROCKETID,Team Rocket ID,Team Rocket IDs,8,0,A Team Rocket ID badge that belongs to somebedy else. It could be useful.,0,0,6,
+546,ROCKETID,Team Rocket ID,Team Rocket IDs,8,0,A Team Rocket ID badge that belongs to somebedy else. It could be useful.,0,0,6,
 547,BEER,Beer,Beers,7,0,"A can of beer. It raises your Pokémon's Atk and Spd stats. But it also makes your Pokémon confused.",0,2,0,
 548,SHOOTER,Tequila,Tequilas,7,0,"A small glass of strong liquor. It raises your Pokémon's Sp.Atk and Spd stats. But it also makes your Pokémon confused.",0,2,0,
 549,SUPERSPLICERS,Super Splicers,Super Splicers,1,1000,"A splicer used to fuse two Pokémon together. It results in a higher-leveled fusion than regular splicers.",1,0,0,
