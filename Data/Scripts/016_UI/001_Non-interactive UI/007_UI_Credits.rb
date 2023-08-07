@@ -81,13 +81,13 @@ Sprites pack manager
 Kiwi
 
 Sprite Managers
-Howls
-Kiwi
-Melmcs
-Milchik the Miltank
-rezza
-Punko
-Skel'n
+avianAnnihilator<s>Blaquaza
+BéBoutton<s>Howls
+Ignus<s>Kiwi
+Maelmc<s>Milchik the Miltank
+rezza<s>Skel'n
+Thorns<s>TM
+
 
 All of the custom fused Pokémon sprites 
 were made by various members of the sp
@@ -116,7 +116,7 @@ Hankiro, luckygirl88, Nalty,
 OceansLugiaSpirit,Pokemon-Diamond,
 rekman, Rick1234, SailorVicious,WolfPP
 
-Tileset graphics:
+Public use tileset graphics:
 Alucus BoOmxBiG<s>chimcharsfireworkd
 EpicDay<s>EternalTakai
 Gallanty Heavy-Metal-Lover<s>Hek-el-grande
@@ -130,12 +130,12 @@ Spacemotion<s>Speedialga
 ThatsSoWitty Thurpok<s>TyranitarDark
 UltimoSpriter<s>WesleyFG
 
-Music:    
+Public use music:    
 Pokeli, TailDoll666100
 Kazune Sawatari, sentsinkantéun,
 Nanashima, CharizardTheMaster, The Zame Jack 
 
-RPG Maker Scripts:
+Public use RPG Maker scripts:
 Luka S.J, shiney570, Erasus, Umbreon
 FL, KleinStudio, carmaniac, Wootius,
 andracass
