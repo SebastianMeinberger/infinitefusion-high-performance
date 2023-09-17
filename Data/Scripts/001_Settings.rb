@@ -6,7 +6,7 @@
 module Settings
   # The version of your game. It has to adhere to the MAJOR.MINOR.PATCH format.
   GAME_VERSION = '5.0.0'
-  GAME_VERSION_NUMBER = "5.3.1"
+  GAME_VERSION_NUMBER = "5.3.1.1"
 
   POKERADAR_LIGHT_ANIMATION_RED_ID = 17
   POKERADAR_LIGHT_ANIMATION_GREEN_ID = 18
@@ -31,9 +31,9 @@ module Settings
   VERSION_FILE_PATH = "Data/VERSION"
   CUSTOM_SPRITES_FILE_PATH = "Data/CUSTOM_SPRITES"
 
-  CREDITS_FILE_URL = "https://raw.githubusercontent.com/infinitefusion/sprites/main/Sprite Credits.csv"
-  SPRITES_FILE_URL = "https://raw.githubusercontent.com/infinitefusion/infinitefusion-e18/main/Data/CUSTOM_SPRITES"
-  VERSION_FILE_URL = "https://raw.githubusercontent.com/infinitefusion/infinitefusion-e18/main/Data/VERSION"
+  HTTP_CONFIGS_FILE_URL = "https://raw.githubusercontent.com/infinitefusion/infinitefusion-e18/main/Data/Scripts/RemoteUrls.rb"
+
+  HTTP_CONFIGS_FILE_PATH = "Data/Scripts/RemoteUrls.rb"
 
   FRONTSPRITE_POSITION_OFFSET = 20
   FRONTSPRITE_SCALE = 0.6666666666
