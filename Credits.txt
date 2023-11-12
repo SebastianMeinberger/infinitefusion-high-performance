@@ -1,5 +1,5 @@
 ##########		CREDITS	         ###############
-Game made by Frogman
+Game made by Chardub
 
 *This is NOT an official Pokemon game. The author of this game is not 
 affiliated with Nintendo in any way 
@@ -7,21 +7,21 @@ affiliated with Nintendo in any way
 ##################################
 ##	Programming  / Events  ##
 #################################
-Frogman
+Chardub
 
 ##############################
-##	Maps		    ##
+##	Maps		    		##
 ##############################	
-Frogman
+Chardub, Kiwikelly
 
 Some of the maps were based on work by:
 BenGames,Films, and More! (Pokemon Adventures in Kanto) http://www.pokecommunity.com/showthread.php?t=303850
 Zeak6464 (Kanto Map pack) http://www.pokecommunity.com/showthread.php?t=345591
 
 #################################
-#	Story / Dialogies	#
+#	Story / Dialogues	#
 #################################
-Frogman 
+Chardub 
 The story and dialogues were based off Pokémon Red and Blue, as well as
 Pokémon Gold and Silver. Both games are made by Game Freak.
 
@@ -46,7 +46,7 @@ their sprites.
 
 Intro cinamatic
 #####################
-Kiwi
+Kiwikelly
 
 Custom fusion sprites
 #####################
@@ -189,41 +189,36 @@ The following ressources were also used
 with their respective authors' consent
 #######################################################################
 ### Sprites ###
-	Mega evolution sprites
-		The Smogon XY Sprite Project:
-		Nosciu, Layell, Branflakes325, , Sleet, TrainerSplash, Noscium, Wobblebuns,
-		Bynine, Arkeis, Legitimate Username, Mos_Quitoxe, Wyverii, ThatGuyYouKnow,
-		aXl, RedRooster, TeraVolt, Dleep, CoolStoryBoat,, TheCynicalPoet,
-		Brylark, Kyuzeth, Quanyails, princess-phoenix
 
-		Smogon Sun/Moon Sprite Project:
-		https://www.smogon.com/forums/threads/sun-moon-sprite-project.3577711/
-		leParagon, aXl, Layell, fishbowlsoul
-	
+
 	Overworld Sprites:
+		Custom graphics:
+		Kiwikelly, Knuckles, UnworthyPie
+
+		Free use graphics:
 		Rick1234 (BW overworld sprites)
 		Hankiro (Oak backsprite) 		http://s296.photobucket.com/user/Hankiro/media/ProfOakBackSprite.png.html
 		SailorVicious (Prof. Elm OW sprite) 	https://www.deviantart.com/sailorvicious
 		OceansLugiaSpirit (Koga OW sprite)  	http://oceanslugiaspirit.deviantart.com/
-		Knuckles (Kurt OW sprite)
-		UnworthyPie (Bruno and Agatha OW sprites)
+
 	Battle sprites: 
+		Custom graphics:
+		Kiwikelly, UnworthyPie
+
+		Free use graphics:
 		luckygirl88  (Misty VS sprite) 		http://luckygirl88.deviantart.com/art/Pokemon-BW-Misty-Sprite-Sheet-268364830
 		Lorelei VS sprite by Nalty 		http://nalty.deviantart.com/art/Lorelei-VS-Sprite-177184960
-		Kiwi (Kurt battle sprite)
-		UnworthyPie (Bruno battle sprite, Lance backsprite)
 		
-	Triple Fusion sprites
-		Tom spiste grønt
-		Scrapped Bones
-		Blackboot
-		Kiwi
-		Solo Queue
-### Tileset graphics ### 
+### Custom tileset graphics ###
+Kiwikelly
+
+
+### Public tileset graphics ### 
 	Jorginho (OutsideEmerald)
 	ThatsSoWitty (Cave) http://thatssowitty.deviantart.com/art/The-Public-Pokemon-Tileset-281342410
 	DirtyWiggles (Gen 5 tileset) http://dirtywiggles.deviantart.com/art/RPG-Maker-Friendly-Tileset-5-0-generation-5-tiles-683576419
-
+	aveontrainer
+	princess-phoenix	https://www.deviantart.com/princess-phoenix/art/Fossil-Museum-Tileset-780178878
 	The Public Pokemon Tileset (Assembled by ThatsSoWitty) http://thatssowitty.deviantart.com/art/The-Public-Pokemon-Tileset-281342410
 	Includes tiles by the following DeviantArt users (in no specific order):
    		kyle-dove, rayd12smitty, Speedialga, Spacemotion, Alucus ,Pokemon-Diamond, kizemaru-kurunosuke, EpicDay,
@@ -234,7 +229,7 @@ with their respective authors' consent
 	tiles to be used in this pack.
 
 	Other tiles:
-		Frogman, chimcharsfireworkd, Rossay, Shiney570,
+		Chardub, chimcharsfireworkd, Rossay, Shiney570,
 		Phyromatical, Gallanty (deviantart)
 
 ### Music ###				
