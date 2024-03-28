@@ -21,7 +21,8 @@ Zeak6464 (Kanto Map pack) http://www.pokecommunity.com/showthread.php?t=345591
 #################################
 #	Story / Dialogues	#
 #################################
-Chardub 
+Chardub
+Kiwikelly
 The story and dialogues were based off Pokémon Red and Blue, as well as
 Pokémon Gold and Silver. Both games are made by Game Freak.
 
@@ -40,7 +41,7 @@ http://pokefusion.japeal.com/
 Alexonsager (version 3.x and below) 
 http://pokemon.alexonsager.net/
 
-Special thanks to Aegide for helping to rip the sprites from the website
+Special thanks to Aegide and Reizod for helping to rip the sprites from the website
 and to the owners of the respective fusion websites for accepting to share
 their sprites.
 
@@ -48,9 +49,23 @@ Intro cinamatic
 #####################
 Kiwikelly
 
+
+Custom sprites collecting and handling
+Kiwikelly, Payapon, Thornsoflight
+
+Discord custom sprites coordination
+avianAnnihilator<s>Blaquaza
+BéBoutton<s>CaBiNE
+CoramSun<s>hero.drawing
+Howls<s>Ignus
+Kiwi<s>Maelmc
+Milchik the Miltank<s>Payapon
+Pix<s>Rosemagwin
+Thornsoflight
+
 Custom fusion sprites
 #####################
-As of 06-09-2022, ordered by number of contributions
+As of 06-09-2022, ordered by number of contributions. Check the Data/SPRITE_CREDS file for full, up to date credits
 
 Toad 900#1617, Kiwi#4199, Aquatic#7954, Knuckles3&Knuckles#7559, Katten#7455, Blaquaza#1347, 
 Blackboots#7369, Milchik#6233, Deleted User#0000, Gdei#2810, Universez#0767, Scarecrow_924#8531,

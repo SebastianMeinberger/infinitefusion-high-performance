@@ -1,9 +1,8 @@
-Graphics/Battlers/*
-PBS/*
+
 Graphics/Battlers_resized/*
 Graphics/CustomBattlers/*
+Graphics/Battlers/*
 Graphics/Pokemon/FusionIcons/*
 Data/SPRITE_CREDS
 Data/VERSION
-Exported Maps/*
-Game.rxproj
+ 
