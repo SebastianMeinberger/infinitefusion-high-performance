@@ -1310,6 +1310,12 @@ Pokemon = B68H75,38
 Pokemon = B107H106,45 
 Pokemon = B106H237,45 
 Pokemon = B237H107,45 
+
+########### Cerulean City ########
+[COOLTRAINER_F,Jen]
+Pokemon = B80H101,50 #slowbro/electrode
+
+
 ############Route 5##############
 
 [POKEMONBREEDER,Maude]
@@ -4211,7 +4217,7 @@ Pokemon = GOLDUCK,33
 Pokemon = B55H219,38 #MAGDUCK
 ############################
 
-[COOLTRAINER_F,Jenn]
+[COOLTRAINER_F,Jessica]
 Pokemon = B120H201,36 #UNYU
 Pokemon = B121H200,41 #MISMIE
 ############################
