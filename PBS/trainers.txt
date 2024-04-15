@@ -4217,7 +4217,7 @@ Pokemon = GOLDUCK,33
 Pokemon = B55H219,38 #MAGDUCK
 ############################
 
-[COOLTRAINER_F,Jessica]
+[COOLTRAINER_F,Jenn]
 Pokemon = B120H201,36 #UNYU
 Pokemon = B121H200,41 #MISMIE
 ############################
