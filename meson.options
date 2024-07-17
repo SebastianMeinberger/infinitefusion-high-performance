@@ -1,0 +1,1 @@
+option('extern_mkxp-z_path', type: 'string', value: '', description: 'If set, executable at the path will be used to run tests/benchmarks, instead of building it from the subproject')
