@@ -7,6 +7,9 @@ module Test_Suite
     def self.uuid
       return @@uuid
     end
+
+    def main
+    end
   end
 
   class Test_Scene_Factory
@@ -25,6 +28,8 @@ module Test_Suite
           return test_class.new
         end
       end
+      puts "Test with uuid #{uuid} not found!"
+      return nil
     end
   end
 end
