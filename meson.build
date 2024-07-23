@@ -13,7 +13,13 @@ endif
 ruby = find_program('ruby', required: true)
 timestamp_wrapper = find_program('Tests/Create_Timestamp.rb', required: true)
 
-add_test_setup('Performance_Measures', exe_wrapper: [ruby, timestamp_wrapper, '--metric', 'requested_VRAM'])
+metrics_to_timestamp = []
+foreach metric : get_option('metrics')
+  metrics_to_timestamp += '--metric'
+  metrics_to_timestamp += metric
+endforeach
+
+add_test_setup('Performance_Measures', exe_wrapper: [ruby, timestamp_wrapper, metrics_to_timestamp]  )
 
 benchmark_env = ['GALLIUM_HUD=frametime,requested-VRAM', 'GALLIUM_HUD_PERIOD=0', ''.join(['GALLIUM_HUD_DUMP_DIR=',meson.current_build_dir(), '/Raw_Measurments'])]
 
