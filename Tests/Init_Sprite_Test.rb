@@ -1,5 +1,5 @@
 module Test_Suite
-  class Init_Sprite_Test < ITest_Scene
+  class Init_Sprite_Test < Test_Scene
     
     @@uuid = "Init_Sprite_Test".freeze
 
