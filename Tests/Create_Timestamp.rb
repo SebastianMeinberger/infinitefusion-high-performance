@@ -1,39 +1,54 @@
 #!/usr/bin/env ruby
 
-# A metric provider, e.g. the mesa gallium HUD, can dump an abatrary amount of measurments into a fifo specified with --metric METRIC.
-# If not already existing, the fifo will be created.
-# You can specify as many metrics/fifos as you like, by simply appending more --metric METRIC2 parameters.
-# This wrapper script then redirects the fifos to a ts (timestamp) instances, in order to make analysing them later easier.
+# A metric provider, e.g. the mesa gallium HUD, can dump an abitrary amount of measurments into a fifo specified with --metric METRIC, which is created automatically.
+# You can specify as many metrics/fifos as you like by simply appending more --metric METRIC parameters.
+# This wrapper script then redirects the fifos to a ts (timestamp) instance, in order to make analysing them later easier.
 
 require 'optparse'
 
 spawned_processes = []
 options = {}
-
 options[:metrics] = []
+options[:name] = "Noname"
 
 OptionParser.new do |opt|
   opt.on("-m", "--metric METRIC") { |o| options[:metrics].append o }
+  opt.on("-n", "--name NAME") {|o| options[:name] = o}
 end.parse!
 
-# Creat the directorion for the fifos and timestamped measurments
-if !Dir.exist?('Raw_Measurments')
-  Dir.mkdir 'Raw_Measurments'
+# Create the directorion for the fifos and timestamped measurments
+dir_raw = 'Raw_Measurments'.freeze
+if !Dir.exist?(dir_raw)
+  Dir.mkdir dir_raw
 end
-if !Dir.exist?('Timestamped_Measurments')
-  Dir.mkdir 'Timestamped_Measurments'
+dir_timestamped = ('Timestamped_Measurments_' + options[:name]).freeze
+if !Dir.exist?(dir_timestamped)
+  Dir.mkdir (dir_timestamped)
 end
 
 
-
+# First, create a fifo, to which the metric provider can dump all measurments during runtime.
 options[:metrics].each do |m|
-  spawned_processes.append spawn(
-      # First, create a fifo, to which the metric provider can dump all measurments during runtime. Then, attach a cat to the fifo, in order to catch the first EOF that will be written to the fifo when wriing starts (for some reason). Finally, redirect fifo into timestamper
-      "mkfifo 'Raw_Measurments/#{m}';
-      cat < 'Raw_Measurments/#{m}';
-      ts < 'Raw_Measurments/#{m}' >> 'Timestamped_Measurments/#{m}_timestamped'")
+  fifo = dir_raw + "/" + m
+  # Delete the old fifo, in case it still contains old data
+  if File.exist? fifo
+    File.delete fifo
+  end
+  File.mkfifo(fifo)
 end
 
-benchmark = spawn(ARGV[0])
+# For every metric, spawn a process that redirects everything from its fifo to a timestamper
+options[:metrics].each do |m|
+  timestamper = 
+    # First, send the fifo through tail, otherwise ts will close in case the fifo is still empty
+    "tail -n +1 -f '" + dir_raw + "/#{m}'"  +
+    # Then pipe to ts, to create the actual timestamps
+    "| ts -s %.S,>> '" + dir_timestamped + "/#{m}'" 
+  spawned_processes.append spawn(timestamper)
+end
+
+# Concatinate rest to get the path to the test executable, together with its arguments
+test_executable = ARGV * " "
+benchmark = spawn(test_executable)
 spawned_processes.append benchmark
 Process.waitall
