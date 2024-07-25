@@ -4,20 +4,13 @@ module Test_Suite
 
     def main
       initialise_game_values
+      # Load Pallet Town without any events
       initialise_map 42, true
-      walk_up_and_down 12
-    end
-     
-    def initialise_switches switches
-      switches.each {|switch| $game_self_switches[switch + ["A"]] = true}
-    end
-    
-    def walk_up_and_down range
-      route = RPG::MoveRoute.new
-      route.repeat = true
-      route.list = (1..range).map {RPG::MoveCommand.new(PBMoveRoute::Forward)}
-      route.list += [RPG::MoveCommand.new(PBMoveRoute::Turn180),RPG::MoveCommand.new(0)]
-      $game_player.force_move_route(route)
+      $game_player.moveto(19, 5)
+
+      # Let the player walk up and down in the middle, where the lagspike border is
+      route = [PBMoveRoute::Forward] * 12 + [PBMoveRoute::Turn180]
+      force_player_route route, true
     end
 
   end

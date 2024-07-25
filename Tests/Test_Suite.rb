@@ -1,5 +1,3 @@
-#require 'debug'
-
 module Test_Suite
 
   class Test_Scene
@@ -19,17 +17,27 @@ module Test_Suite
       $Trainer.clothes = "red"
       $Trainer.character_ID = 0
       $Trainer.has_running_shoes = true
+      Events.onMapSceneChange += @@signal_loading_finised
     end
 
     def initialise_map id, clear_events
       $MapFactory = PokemonMapFactory.new id
-      $game_player.moveto(19, 5)
       $PokemonEncounters = PokemonEncounters.new
-      $PokemonEncounters.setup($game_map.map_id)
-      Events.onMapSceneChange += @@signal_loading_finised
+      $PokemonEncounters.setup $game_map.map_id
       if clear_events
         $game_map.events.clear
       end
+    end
+
+    def force_player_route list_move_command_codes, repeat
+      route = RPG::MoveRoute.new
+      route.list = list_move_command_codes.map {|c| RPG::MoveCommand.new c}
+      route.repeat = repeat
+      if repeat
+        # For some reason that is neccessary for looping the route
+        route.list.append RPG::MoveCommand.new 0
+      end 
+      $game_player.force_move_route route
     end
 
     @@signal_loading_finised = -> (s,e){
