@@ -1,3 +1,4 @@
+require 'debug'
 module Test_Suite
 
   class Test_Scene
@@ -40,6 +41,29 @@ module Test_Suite
       $game_player.force_move_route route
     end
 
+    def force_player_route list_move_command_codes, repeat
+      route = RPG::MoveRoute.new
+      route.list = []
+      list_move_command_codes.each do |c|
+        if c.is_a? Integer
+          route.list += [RPG::MoveCommand.new(PBMoveRoute::Forward)] * c
+        elsif c == :l
+          route.list += [RPG::MoveCommand.new(PBMoveRoute::TurnLeft90)]
+        elsif c == :r
+          route.list += [RPG::MoveCommand.new(PBMoveRoute::TurnRight90)]
+        elsif c == :f
+          route.list += [RPG::MoveCommand.new(PBMoveRoute::Turn180)]
+        end
+      end
+      route.repeat = repeat
+      if repeat
+        # For some reason that is neccessary for looping the route
+        route.list.append RPG::MoveCommand.new 0
+      end 
+      $game_player.force_move_route route
+    end
+
+
     @@signal_loading_finised = -> (s,e){
       if ARGV.length > 0
         path = ARGV[-1] + "/Raw_Measurments/loadtime"
@@ -60,13 +84,13 @@ module Test_Suite
       return test_scenes
     end
 
-    def self.generate_test uuid
+    def self.generate_test name
       Test_Suite::Test_Scene.subclasses.each do |test_class|
-        if test_class.uuid == uuid
+        if test_class.name == "Test_Suite::" + name
           return test_class.new
         end
       end
-      puts "Test with uuid #{uuid} not found!"
+      puts "Test with name #{name} not found!"
       return nil
     end
   end
