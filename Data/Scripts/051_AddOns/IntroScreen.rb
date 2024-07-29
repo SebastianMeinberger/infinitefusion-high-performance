@@ -95,25 +95,6 @@ class Scene_Intro
     sscreen.pbStartDeleteScreen
   end
 
-  # def cyclePics(pics)
-  #   sprite=Sprite.new
-  #   sprite.opacity=0
-  #   for i in 0...pics.length
-  #     bitmap=pbBitmap("Graphics/Titles/#{pics[i]}")
-  #     sprite.bitmap=bitmap
-  #     15.times do
-  #       sprite.opacity+=17
-  #       pbWait(1)
-  #     end
-  #     wait(32)
-  #     15.times do
-  #       sprite.opacity-=17
-  #       pbWait(1)
-  #     end
-  #   end
-  #   sprite.dispose
-  # end
-
   def disposeTitle
     @screen.dispose
   end
@@ -170,7 +151,6 @@ class GenOneStyle
 
     @currentFrame = 0
     # calculates after how many frames the game will reset
-    #@totalFrames=getPlayTime("Audio/BGM/#{bgm}")*Graphics.frame_rate
     @totalFrames = 10 * Graphics.frame_rate
 
     pbBGMPlay(bgm)
@@ -187,15 +167,6 @@ class GenOneStyle
     @sprites["bg"].bitmap = pbBitmap("Graphics/Titles/gen1_bg")
     @sprites["bg"].x = -Graphics.width
 
-    #@sprites["bg2"]=Sprite.new(@viewport)
-    #@sprites["bg2"].bitmap=pbBitmap("Graphics/Titles/gen1_bg_litup")
-    #@sprites["bg2"].opacity=0
-
-    #@sprites["start"]=Sprite.new(@viewport)
-    #@sprites["start"].bitmap=pbBitmap("Graphics/Titles/pokelogo3")
-    #@sprites["start"].x=138
-    #@sprites["start"].y=300
-    #@sprites["start"].opacity=255
     @sprites["effect"] = AnimatedPlane.new(@viewport)
     @sprites["effect"].bitmap = pbBitmap("Graphics/Titles/gen1_effect")
     @sprites["effect"].opacity = 155
@@ -243,11 +214,9 @@ class GenOneStyle
     @sprites["2poke2"].y = 100
 
     @sprites["logo"] = Sprite.new(@viewport)
-    #bitmap2=pbBitmap("Graphics/Titles/pokelogo2")
     bitmap1 = pbBitmap("Graphics/Titles/pokelogo")
     @sprites["logo"].bitmap = Bitmap.new(bitmap1.width, bitmap1.height)
     @sprites["logo"].bitmap.blt(0, 0, bitmap1, Rect.new(0, 0, bitmap1.width, bitmap1.height))
-    #@sprites["logo"].bitmap.blt(0,0,bitmap2,Rect.new(0,40,bitmap2.width,bitmap2.height))
     @sprites["logo"].tone = Tone.new(255, 255, 255, 255)
     @sprites["logo"].x = 50
     @sprites["logo"].y = -20
@@ -354,9 +323,6 @@ class GenOneStyle
     if @sprites["poke"].x > @sprites["2poke"].x
       @sprites["poke"].x = @sprites["poke"].x - 1
       @sprites["2poke"].x = @sprites["2poke"].x + 1
-      #@sprites["effect"].opacity-=1
-      #@sprites["bg"].opacity-=1
-      #@sprites["bg2"].opacity+=3
     end
 
     if @sprites["poke"].x <= @sprites["2poke"].x
@@ -394,13 +360,7 @@ class GenOneStyle
       @sprites["2poke"].bitmap = pbBitmap(path_s2)
 
       wait(150)
-
-      #  fusedpoke = (randpoke2*151)+randpoke1
-      #fusedpoke_s =fusedpoke.to_s
       @sprites["fpoke"].bitmap = pbBitmap(path_f)
-      #@sprites["effect"].opacity=155
-      #@sprites["bg"].opacity=255
-      #@sprites["bg2"].opacity=0
     end
 
     @sprites["fpoke"].opacity -= 10
@@ -459,169 +419,4 @@ def wait(frames)
       return
     end
   end
-end
-
-#end
-
-#===============================================================================
-# Styled to look like the gen 3 games
-#===============================================================================
-class GenThreeStyle
-  def initialize
-    # sound file for playing the title screen BGM
-    bgm = "rse opening"
-    @skip = false
-    # speed of the effect movement
-    @speed = 1
-    @opacity = 2
-    @frame = 0
-    @disposed = false
-
-    @currentFrame = 0
-    # calculates after how many frames the game will reset
-    #@totalFrames=getPlayTime("Audio/BGM/#{bgm}")*Graphics.frame_rate
-    @totalFrames = 10 * Graphics.frame_rate
-    pbBGMPlay(bgm)
-
-    # creates all the necessary graphics
-    @viewport = Viewport.new(0, 0, Graphics.width, Graphics.height)
-    @viewport.z = 99999
-    @sprites = {}
-
-    @sprites["bg"] = Sprite.new(@viewport)
-    @sprites["bg"].bitmap = pbBitmap("Graphics/Titles/gen3_bg")
-    @sprites["bg"].tone = Tone.new(255, 255, 255)
-    @sprites["bg"].opacity = 0
-
-    #@sprites["bg2"]=Sprite.new(@viewport)
-    #@sprites["bg2"].bitmap=pbBitmap("Graphics/Titles/gen3_bg")
-    #@sprites["bg2"].tone=Tone.new(255,255,255)
-    #@sprites["bg2"].opacity=0
-
-    @sprites["poke1"] = Sprite.new(@viewport)
-    @sprites["poke1"].bitmap = pbBitmap("Graphics/Titles/gen3_poke1")
-    @sprites["poke1"].opacity = 0
-    @sprites["poke2"] = Sprite.new(@viewport)
-    @sprites["poke2"].bitmap = pbBitmap("Graphics/Titles/gen3_poke2")
-    @sprites["poke2"].opacity = 0
-    @sprites["effect"] = AnimatedPlane.new(@viewport)
-    @sprites["effect"].bitmap = pbBitmap("Graphics/Titles/gen3_effect")
-    @sprites["effect"].visible = false
-
-    @sprites["logo2"] = Sprite.new(@viewport)
-    @sprites["logo2"].bitmap = pbBitmap("Graphics/Titles/pokelogo2")
-    @sprites["logo2"].x = 50
-    @sprites["logo2"].y = 24 - 32
-    @sprites["logo2"].opacity = 0
-
-    @sprites["logo1"] = Sprite.new(@viewport)
-    @sprites["logo1"].bitmap = pbBitmap("Graphics/Titles/pokelogo")
-    @sprites["logo1"].x = 50
-    @sprites["logo1"].y = 24 + 64
-    @sprites["logo1"].opacity = 0
-
-    @sprites["logo3"] = Sprite.new(@viewport)
-    @sprites["logo3"].bitmap = pbBitmap("Graphics/Titles/pokelogo")
-    @sprites["logo3"].tone = Tone.new(255, 255, 255)
-    @sprites["logo3"].x = 18
-    @sprites["logo3"].y = 24 + 64
-    @sprites["logo3"].src_rect.set(-34, 0, 34, 230)
-    @sprites["start"] = Sprite.new(@viewport)
-    @sprites["start"].bitmap = pbBitmap("Graphics/Titles/pokelogo3")
-    @sprites["start"].x = 178
-    @sprites["start"].y = 312
-    @sprites["start"].visible = true
-  end
-
-  def intro
-    16.times do
-      @sprites["logo1"].opacity += 16
-      wait(1)
-    end
-    wait(16)
-    12.times do
-      @sprites["logo3"].x += 34
-      @sprites["logo3"].src_rect.x += 34
-      wait(1)
-    end
-    @sprites["logo3"].x = 18
-    @sprites["logo3"].src_rect.x = -34
-    wait(32)
-    2.times do
-      12.times do
-        @sprites["logo3"].x += 34
-        @sprites["logo3"].src_rect.x += 34
-        @sprites["bg"].opacity += 21.5
-        wait(1)
-      end
-      @sprites["logo3"].x = 18
-      @sprites["logo3"].src_rect.x = -34
-      wait(4)
-      16.times do
-        @sprites["bg"].opacity -= 16
-        wait(1)
-      end
-      wait(32)
-    end
-    @sprites["logo3"].visible = false
-    16.times do
-      @sprites["logo1"].y -= 2
-      wait(1)
-    end
-    16.times do
-      @sprites["logo2"].y += 2
-      @sprites["logo2"].opacity += 16
-      @sprites["logo1"].y -= 2
-
-      wait(1)
-    end
-    wait(56)
-    @sprites["bg"].tone = Tone.new(0, 0, 0)
-    @sprites["bg"].opacity = 255
-    @sprites["poke1"].opacity = 255
-    @sprites["effect"].visible = true
-
-  end
-
-  def update
-    @currentFrame += 1
-    @frame += 1
-    @sprites["effect"].oy += @speed
-    @sprites["poke2"].opacity += @opacity
-    @opacity = -2 if @sprites["poke2"].opacity >= 255
-    @opacity = +2 if @sprites["poke2"].opacity <= 0
-    if @frame == 8
-      @sprites["start"].visible = true
-    elsif @frame == 24
-      @sprites["start"].visible = false
-      @frame = 0
-    end
-
-    if @currentFrame >= @totalFrames
-      raise Reset.new
-    end
-  end
-
-  def dispose
-    pbFadeOutAndHide(@sprites)
-    pbDisposeSpriteHash(@sprites)
-    @viewport.dispose
-    @disposed = true
-  end
-
-  def disposed?
-    return @disposed
-  end
-
-  def wait(frames)
-    return if @skip
-
-    frames.times do
-      @currentFrame += 1
-      Graphics.update
-      Input.update
-      @skip = true if Input.trigger?(Input::C)
-    end
-  end
-
 end
