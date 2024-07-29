@@ -18,16 +18,8 @@ class Scene_Intro
   def playIntroCinematic
     intro_sprite = Sprite.new
     intro_sprite.bitmap = Bitmap.new("Graphics/Pictures/Intro/INTRO.gif")
-    intro_sprite.bitmap.looping = false
-    intro_sprite.bitmap.play
     pbBGMPlay("INTRO_music_cries")
-    while intro_sprite.bitmap.playing do
-      Graphics.update
-      Input.update
-      if Input.press?(Input::C)
-        break
-      end
-    end
+    play_bitmaps_to_end intro_sprite.bitmap
     pbBGMStop
   end
 
@@ -36,11 +28,12 @@ class Scene_Intro
     # Cycles through the intro pictures
     @skip = false
 
-    playIntroCinematic
+    #playIntroCinematic
     # Selects title screen style
     @screen = GenOneStyle.new
     # Plays the title screen intro (is skippable)
     @screen.intro
+
     # Creates/updates the main title screen loop
     self.update
     Graphics.freeze
@@ -49,7 +42,6 @@ class Scene_Intro
   def update
     ret = 0
     loop do
-      @screen.update
       Graphics.update
       Input.update
       if Input.press?(Input::DOWN) &&
@@ -98,23 +90,19 @@ class Scene_Intro
   def disposeTitle
     @screen.dispose
   end
-
-  def wait(frames)
-    return if @skip
-    frames.times do
-      Graphics.update
-      Input.update
-      @skip = true if Input.trigger?(Input::C)
-    end
-  end
 end
 
 #===============================================================================
 # Styled to look like the FRLG games
 #===============================================================================
 class GenOneStyle
-
+    
   def initialize
+
+    @bitmaps = {}
+    @z_min = 0
+    @z_max = 1
+
     Kernel.pbDisplayText("Keybindings: F1", 80, 0, 99999)
     Kernel.pbDisplayText("Version " + Settings::GAME_VERSION_NUMBER, 254, 308, 99999)
 
@@ -122,256 +110,98 @@ class GenOneStyle
     @customPokeList = getCustomSpeciesList(false)
     #Get random Pokemon (1st gen orandPokenly, pas de legend la prmeiere fois)
 
-    randPoke = getRandomCustomFusionForIntro(true, @customPokeList, @maxPoke)
-    randpoke1 = randPoke[0] #rand(@maxPoke)+1
-    randpoke2 = randPoke[1] #rand(@maxPoke)+1
-
-    randpoke2s = randpoke2.to_s
-
-    path_s1 = get_unfused_sprite_path(randpoke1)
-    path_s2 = get_unfused_sprite_path(randpoke2)
-    path_f = get_fusion_sprite_path(randpoke1, randpoke2)
-
-    @prevPoke1 = randpoke1
-    @prevPoke2 = randpoke2
-
-    #Get Fused Poke
-    fusedpoke = (randpoke2 * NB_POKEMON) + randpoke1
-    fusedpoke_s = fusedpoke.to_s
-
-    @selector_pos = 0 #1: left, 0:right
-
     # sound file for playing the title screen BGM
     bgm = "Pokemon Red-Blue Opening"
     @skip = false
     # speed of the effect movement
-    @speed = 16
-    @opacity = 17
     @disposed = false
-
-    @currentFrame = 0
-    # calculates after how many frames the game will reset
-    @totalFrames = 10 * Graphics.frame_rate
-
     pbBGMPlay(bgm)
-
-    # creates all the necessary graphics
     @viewport = Viewport.new(0, 0, Graphics.width, Graphics.height)
     @viewport.z = 99998
     @sprites = {}
 
-    @sprites["bars"] = Sprite.new(@viewport)
-    @sprites["bars"].bitmap = pbBitmap("Graphics/Titles/gen1_bars")
-    @sprites["bars"].x = Graphics.width
-    @sprites["bg"] = Sprite.new(@viewport)
-    @sprites["bg"].bitmap = pbBitmap("Graphics/Titles/gen1_bg")
-    @sprites["bg"].x = -Graphics.width
+    load_bitmaps
+  end
+  
+  def interpolate_bitmap_blit_params bitmap, size_rect, number_frames, x_start, x_end, y_start, y_end, opacity_start, opacity_end, frame
+    new_frame = Bitmap.new(size_rect.width, size_rect.height)
+  
+    x_pos = interpolate_l x_start, x_end, number_frames, frame
+    y_pos = interpolate_l y_start, y_end, number_frames, frame
+    opacity = interpolate_l opacity_start, opacity_end, number_frames, frame
 
-    @sprites["effect"] = AnimatedPlane.new(@viewport)
-    @sprites["effect"].bitmap = pbBitmap("Graphics/Titles/gen1_effect")
-    @sprites["effect"].opacity = 155
-    @sprites["effect"].visible = false
+    return new_frame.blt x_pos, y_pos, bitmap, size_rect, opacity
+  end
 
-    @sprites["selector"] = Sprite.new(@viewport)
-    @sprites["selector"].bitmap = pbBitmap("Graphics/Titles/selector")
-    @sprites["selector"].x = 0
-    @sprites["selector"].y = 200
-    @sprites["selector"].opacity = 0
+  def interpolate_l start_val, end_val, number_frames, frame 
+    return start_val + frame * (end_val - start_val)/number_frames
+  end
+  
+  def animate_bitmap_blit bitmap, size_rect, number_frames, x_start: 0, x_end: x_start, y_start: 0, y_end: y_start, opacity_start: 255, opacity_end: 255, on_top: true
+    
+    # Send parameters relevant to interpolation to interpolation function
+    delegate = ->(i) {interpolate_bitmap_blit_params bitmap, size_rect, number_frames, x_start, x_end, y_start, y_end, opacity_start, opacity_end, i}
 
-    @sprites["poke"] = Sprite.new(@viewport)
-    @sprites["poke"].bitmap = pbBitmap(path_s1)
-    @sprites["poke"].x = 400
-    @sprites["poke"].y = 75
+    # Create first frame, so the rest can be attached to it
+    animation = delegate.call 0 
 
-    @sprites["2poke"] = Sprite.new(@viewport)
-    @sprites["2poke"].bitmap = pbBitmap(path_s2)
-    @sprites["2poke"].x = -150
-    @sprites["2poke"].y = 75
+    # Create remaining frames and attach to first
+    for i in 1..number_frames do
+      new_frame = delegate.call i 
+      animation.add_frame new_frame
+    end
 
-    @sprites["fpoke"] = Sprite.new(@viewport)
-    @sprites["fpoke"].bitmap = pbBitmap(path_f)
-    @sprites["fpoke"].x = 125
-    @sprites["fpoke"].y = 75
-    @sprites["fpoke"].z = 999
-    @sprites["fpoke"].opacity = 0
+    # Set animation properties
+    animation.frame_rate = 20
 
-    @sprites["poke"].tone = Tone.new(0, 0, 0, 255)
-    @sprites["poke"].opacity = 0
-    @sprites["poke2"] = Sprite.new(@viewport)
-    # @sprites["poke2"].bitmap = pbBitmap("Graphics/Battlers/21364")
-    @sprites["poke2"].tone = Tone.new(255, 255, 255, 255)
-    @sprites["poke2"].src_rect.set(0, Graphics.height, Graphics.width, 48)
-    @sprites["poke2"].y = Graphics.height
-    @sprites["poke2"].y = 100
+    # Wrap into Sprite
+    sprite = Sprite.new(@viewport)
+    sprite.bitmap = animation
+    if on_top
+      sprite.z = @z_max
+      @z_max += 1
+    else
+      sprite.z = @z_min
+      @z_min -= 1
+    end
 
-    @sprites["2poke"].tone = Tone.new(0, 0, 0, 255)
-    @sprites["2poke"].opacity = 0
-    @sprites["2poke2"] = Sprite.new(@viewport)
-    @sprites["2poke2"].bitmap = pbBitmap("Graphics/Battlers/special/000")
-    @sprites["2poke2"].tone = Tone.new(255, 255, 255, 255)
-    @sprites["2poke2"].src_rect.set(0, Graphics.height, Graphics.width, 48)
-    @sprites["2poke2"].y = Graphics.height
-    @sprites["2poke2"].y = 100
-
-    @sprites["logo"] = Sprite.new(@viewport)
-    bitmap1 = pbBitmap("Graphics/Titles/pokelogo")
-    @sprites["logo"].bitmap = Bitmap.new(bitmap1.width, bitmap1.height)
-    @sprites["logo"].bitmap.blt(0, 0, bitmap1, Rect.new(0, 0, bitmap1.width, bitmap1.height))
-    @sprites["logo"].tone = Tone.new(255, 255, 255, 255)
-    @sprites["logo"].x = 50
-    @sprites["logo"].y = -20
-    @sprites["logo"].opacity = 0
-
-    @sprites["star"] = Sprite.new(@viewport)
-    @sprites["star"].bitmap = pbBitmap("Graphics/Pictures/darkness")
-    @sprites["star"].opacity = 0
-    @sprites["star"].x = -50
-    @sprites["star"].y = 0
-
+    return sprite
+   end
+  
+  def load_bitmaps
+    randPoke = getRandomCustomFusionForIntro(true, @customPokeList, @maxPoke)
+    [
+      # Background Stuff
+      [:bg, "Graphics/Titles/gen1_bg"],
+      [:bars, "Graphics/Titles/gen1_bars"],
+      [:logo,"Graphics/Titles/pokelogo"],
+      # The fusing pokemon
+      [:poke, (get_unfused_sprite_path randPoke[0])],
+      [:poke2, (get_unfused_sprite_path randPoke[1])],
+      [:fpoke, (get_fusion_sprite_path randPoke[0], randPoke[1])]
+    ].each do |bitmap| 
+      @bitmaps[bitmap[0]] = pbBitmap bitmap[1]
+    end
   end
 
   def intro
-    wait(16)
-    16.times do
-    end
-    wait(32)
-    64.times do
+    # Turn the opacity of two unfused pokemon slowly up
+    poke1_opacity = animate_bitmap_blit @bitmaps[:poke], @bitmaps[:bg].rect, 64,
+      x_start: 400, y_start: 75,
+      opacity_start: 0, opacity_end: 256
+    poke2_opacity = animate_bitmap_blit @bitmaps[:poke2], @bitmaps[:bg].rect, 64,
+      x_start: -150, y_start: 75,
+      opacity_start: 0, opacity_end: 256
+    play_bitmaps_to_end poke1_opacity.bitmap, poke2_opacity.bitmap
+   
+    # Background image slides in from left screen border
+    bg_slide_in = animate_bitmap_blit @bitmaps[:bg], @bitmaps[:bg].rect, 8, x_start: -@bitmaps[:bg].rect.width, x_end: 0, on_top: false
+    play_bitmaps_to_end bg_slide_in.bitmap
 
-      @sprites["2poke"].opacity += 4
-      @sprites["poke"].opacity += 4
-      wait(1)
-    end
-    8.times do
-      @sprites["bg"].x += 64
-      wait(1)
-    end
-    wait(8)
-    8.times do
-      @sprites["bars"].x -= 64
-      wait(1)
-    end
-    wait(8)
-    @sprites["logo"].opacity = 255
-    @sprites["poke2"].opacity = 255
-    @sprites["2poke2"].opacity = 255
-
-    @sprites["poke"].tone = Tone.new(0, 0, 0, 0)
-    @sprites["2poke"].tone = Tone.new(0, 0, 0, 0)
-
-    @sprites["effect"].visible = false
-    c = 255.0
-    16.times do
-      @sprites["poke2"].opacity -= 255.0 / 16
-      @sprites["2poke2"].opacity -= 255.0 / 16
-
-      c -= 255.0 / 16
-      @sprites["logo"].tone = Tone.new(c, c, c)
-      @sprites["effect"].ox += @speed
-
-      wait(1)
-    end
-  end
-
-  TONE_INCR = 15
-
-  def makeShineEffect()
-    newColor = @sprites["poke"].tone.red + TONE_INCR
-    newTone = Tone.new(newColor, newColor, newColor, 0)
-    @sprites["poke"].tone = newTone
-    @sprites["2poke"].tone = newTone
-  end
-
-  def introloop
-    @sprites["star"].opacity = 0
-    @sprites["poke"].opacity = 255
-    @sprites["2poke"].opacity = 255
-    @sprites["fpoke"].opacity = 0
-    @sprites["poke"].x = @sprites["poke"].x - 1
-    @sprites["2poke"].x = @sprites["2poke"].x + 1
+    # 
 
   end
 
-  def update_selector_position()
-    if Input.press?(Input::RIGHT) || Input.press?(Input::LEFT)
-      if Input.press?(Input::RIGHT)
-        @selector_pos = 0
-        @sprites["selector"].opacity = 100
-      elsif Input.press?(Input::LEFT)
-        @selector_pos = 1
-        @sprites["selector"].opacity = 100
-      end
-    else
-      @sprites["selector"].opacity=0
-    end
-
-    if @selector_pos == 0
-      @sprites["selector"].x = @sprites["poke"].x
-    else
-      @sprites["selector"].x = @sprites["2poke"].x
-    end
-  end
-
-  def update
-    @sprites["effect"].ox += @speed
-    @currentFrame += 1
-    @skip = false
-
-    if @sprites["poke"].x < 175 #150
-      makeShineEffect()
-    end
-    update_selector_position()
-    if @sprites["poke"].x > @sprites["2poke"].x
-      @sprites["poke"].x = @sprites["poke"].x - 1
-      @sprites["2poke"].x = @sprites["2poke"].x + 1
-    end
-
-    if @sprites["poke"].x <= @sprites["2poke"].x
-      @sprites["poke"].opacity = 0
-      @sprites["2poke"].opacity = 0
-      #16.times do
-      @sprites["fpoke"].opacity = 255
-      @sprites["selector"].opacity = 0
-      #wait(1)
-      #end
-      @sprites["poke"].x = 400
-      @sprites["poke"].tone = Tone.new(0, 0, 0, 0)
-
-      @sprites["2poke"].x = -150
-      @sprites["2poke"].tone = Tone.new(0, 0, 0, 0)
-
-      if @maxPoke < NB_POKEMON - 1
-        @maxPoke += 5 #-1 pour que ca arrive pile. tant pis pour kyurem
-      end
-      randPoke = getRandomCustomFusionForIntro(true, @customPokeList, @maxPoke)
-      randpoke1 = randPoke[0] #rand(@maxPoke)+1
-      randpoke2 = randPoke[1] #rand(@maxPoke)+1
-
-      path_s1 = get_unfused_sprite_path(randpoke1)
-      path_s2 = get_unfused_sprite_path(randpoke2)
-      path_f = getFusedPath(randpoke1, randpoke2)
-
-      path_fMod = getFusedPath(@prevPoke1, @prevPoke2)
-      @sprites["fpoke"].bitmap = pbBitmap(path_fMod)
-
-      @prevPoke1 = randpoke1
-      @prevPoke2 = randpoke2
-
-      @sprites["poke"].bitmap = pbBitmap(path_s1)
-      @sprites["2poke"].bitmap = pbBitmap(path_s2)
-
-      wait(150)
-      @sprites["fpoke"].bitmap = pbBitmap(path_f)
-    end
-
-    @sprites["fpoke"].opacity -= 10
-    @sprites["effect"].ox += @speed
-
-    if @currentFrame >= @totalFrames
-      introloop
-    end
-  end
-
-  #new version
   def getFusedPath(randpoke1, randpoke2)
     path = rand(2) == 0 ? get_fusion_sprite_path(randpoke1, randpoke2) : get_fusion_sprite_path(randpoke2, randpoke1)
     if Input.press?(Input::RIGHT)
@@ -382,16 +212,6 @@ class GenOneStyle
     return path
   end
 
-end
-
-def getFusedPatho(randpoke1s, randpoke2s)
-  path = rand(2) == 0 ? "Graphics/Battlers/" + randpoke1s + "/" + randpoke1s + "." + randpoke2s : "Graphics/Battlers/" + randpoke2s + "/" + randpoke2s + "." + randpoke1s
-  if Input.press?(Input::RIGHT)
-    path = "Graphics/Battlers/" + randpoke2s + "/" + randpoke2s + "." + randpoke1s
-  elsif Input.press?(Input::LEFT)
-    path = "Graphics/Battlers/" + randpoke1s + "/" + randpoke1s + "." + randpoke2s
-  end
-  return path
 end
 
 def dispose
@@ -406,17 +226,22 @@ def disposed?
   return @disposed
 end
 
-def wait(frames)
-  return if @skip
-  frames.times do
-    @currentFrame += 1
-    @sprites["effect"].ox += @speed
+def play_bitmaps_to_end *bitmaps
+  bitmaps.each do |bitmap|
+    bitmap.looping = false # Just to be sure
+    bitmap.play
+  end
+ 
+  at_least_one_playing = ->() do
+    bitmaps.reduce(false) {|sum,bitmap| sum or bitmap.playing}
+  end
 
+  while at_least_one_playing.call and not @skip do
     Graphics.update
     Input.update
-    if Input.trigger?(Input::C)
+    if Input.press?(Input::C)
       @skip = true
-      return
     end
   end
 end
+
