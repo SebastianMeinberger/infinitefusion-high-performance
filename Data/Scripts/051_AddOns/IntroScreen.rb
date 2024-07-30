@@ -10,7 +10,6 @@
 SCREENSTYLE = 1
 # 1 - FR/LG
 # 2 - R/S/E
-
 class Scene_Intro
 
   alias main_old main
@@ -184,21 +183,30 @@ class GenOneStyle
     end
   end
 
-  def intro
+  def intro 
+    bg_rect = @bitmaps[:bg].rect
     # Turn the opacity of two unfused pokemon slowly up
-    poke1_opacity = animate_bitmap_blit @bitmaps[:poke], @bitmaps[:bg].rect, 64,
+    poke1_opacity = animate_bitmap_blit @bitmaps[:poke], bg_rect, 64,
       x_start: 400, y_start: 75,
       opacity_start: 0, opacity_end: 256
-    poke2_opacity = animate_bitmap_blit @bitmaps[:poke2], @bitmaps[:bg].rect, 64,
+    poke1_opacity.flash(nil,100)
+    poke2_opacity = animate_bitmap_blit @bitmaps[:poke2], bg_rect, 64,
       x_start: -150, y_start: 75,
       opacity_start: 0, opacity_end: 256
     play_bitmaps_to_end poke1_opacity.bitmap, poke2_opacity.bitmap
    
     # Background image slides in from left screen border
-    bg_slide_in = animate_bitmap_blit @bitmaps[:bg], @bitmaps[:bg].rect, 8, x_start: -@bitmaps[:bg].rect.width, x_end: 0, on_top: false
+    bg_slide_in = animate_bitmap_blit @bitmaps[:bg], bg_rect, 8,
+      x_start: -bg_rect.width, x_end: 0, on_top: false
     play_bitmaps_to_end bg_slide_in.bitmap
 
-    # 
+    # Bars slide in from the right screen border
+    bars_slide_in = animate_bitmap_blit @bitmaps[:bars], bg_rect, 8,
+      x_start: bg_rect.width, x_end: 0
+    play_bitmaps_to_end bars_slide_in.bitmap
+
+    # Logo appears and goes form purly white to its real colors
+    logo
 
   end
 
