@@ -91,14 +91,111 @@ class Scene_Intro
   end
 end
 
+module Animation
+  require 'matrix' 
+  # Animation curves describe how a proberty changes over time.
+  # Its points describe the value of the property at a fixed point in time 
+  # and the interpolation method dictates how the property behaves between these points.
+  # There are two implicite points, the first at (0,0) and the second at (duration,0)
+  # If other values are needed, they can simply be overwritten
+  class Animation_Curve
+        
+    def initialize property_setter, interpolation
+      @property_setter = property_setter
+      @interpolation = method interpolation
+      @points = [Vector[0,0]]
+      # The next point, that happens after the last known runtime.
+      # Don't access direcly, is updated through the getter.
+      # This is used to prevent searching the entire array everytime.
+      # Since the point array is always sorted, it is always sufficient to only look at the next point and only start seaching once that lies in the past   
+      @next_index = 0   
+    end
+
+    def add_point p
+      i = 0
+      while p[0] < @points[i][0] do 
+        i += 1
+      end
+      if p[0] == @points[i][0]
+        # New value for defined time point => replace old
+        @points[i] = p
+      else
+        # New time point. Insert after the first one earlier in time 
+        @points.insert i+1, p
+      end
+    end
+
+    def next_point runtime
+      if runtime <= @points[@next_index][0]
+        return @points[@next_index]
+      else
+        # Update index, so we don't have to search the entire array later on
+        # TODO Obviously fails, if more than one point slip into the past on one update
+        @next_index = (@next_index+1).clamp(0,@points.length - 1)
+        return @points[@next_index]
+      end
+    end
+
+    def previous_point runtime
+      next_point runtime
+      index = (@next_index - 1).clamp(0,@points.length - 1)
+      return @points[index] 
+    end
+
+    def apply runtime
+      _next_point = next_point runtime
+      _previous_point = previous_point runtime
+      if runtime == _next_point[0]
+        value = _next_point[1]
+      else
+        value = @interpolation.call _previous_point, _next_point, runtime
+      end
+      @property_setter.call value
+    end
+
+    def linear_interpolation p_1, p_2, runtime
+      # Clamp, this function is only meant for interpolating, not extrapolating
+      time_point = runtime.clamp p_1[0], p_2[0]
+      m = (p_2[1]-p_1[1])/(p_2[0]-p_1[0])
+      b = p_1[1]-m*p_1[0]
+      return m*time_point + b 
+    end 
+
+
+  end
+  
+
+  class Animated_Sprite < Sprite
+    attr_accessor :curves
+    
+    def initialize *args
+     @curves = []
+     @runtime = 0
+     super(*args)
+    end
+
+    
+    def update
+      curves.each {|c| c.apply @runtime}
+      @runtime += Graphics.delta
+      self.visible = true
+      super
+    end
+
+  end
+end
+
+
 #===============================================================================
 # Styled to look like the FRLG games
 #===============================================================================
 class GenOneStyle
+  require 'matrix'
+
     
   def initialize
 
-    @bitmaps = {}
+    @sprites = {}
     @z_min = 0
     @z_max = 1
 
@@ -117,57 +214,12 @@ class GenOneStyle
     pbBGMPlay(bgm)
     @viewport = Viewport.new(0, 0, Graphics.width, Graphics.height)
     @viewport.z = 99998
-    @sprites = {}
+    #@sprites = {}
 
-    load_bitmaps
+    load_sprites
   end
   
-  def interpolate_bitmap_blit_params bitmap, size_rect, number_frames, x_start, x_end, y_start, y_end, opacity_start, opacity_end, frame
-    new_frame = Bitmap.new(size_rect.width, size_rect.height)
-  
-    x_pos = interpolate_l x_start, x_end, number_frames, frame
-    y_pos = interpolate_l y_start, y_end, number_frames, frame
-    opacity = interpolate_l opacity_start, opacity_end, number_frames, frame
-
-    return new_frame.blt x_pos, y_pos, bitmap, size_rect, opacity
-  end
-
-  def interpolate_l start_val, end_val, number_frames, frame 
-    return start_val + frame * (end_val - start_val)/number_frames
-  end
-  
-  def animate_bitmap_blit bitmap, size_rect, number_frames, x_start: 0, x_end: x_start, y_start: 0, y_end: y_start, opacity_start: 255, opacity_end: 255, on_top: true
-    
-    # Send parameters relevant to interpolation to interpolation function
-    delegate = ->(i) {interpolate_bitmap_blit_params bitmap, size_rect, number_frames, x_start, x_end, y_start, y_end, opacity_start, opacity_end, i}
-
-    # Create first frame, so the rest can be attached to it
-    animation = delegate.call 0 
-
-    # Create remaining frames and attach to first
-    for i in 1..number_frames do
-      new_frame = delegate.call i 
-      animation.add_frame new_frame
-    end
-
-    # Set animation properties
-    animation.frame_rate = 20
-
-    # Wrap into Sprite
-    sprite = Sprite.new(@viewport)
-    sprite.bitmap = animation
-    if on_top
-      sprite.z = @z_max
-      @z_max += 1
-    else
-      sprite.z = @z_min
-      @z_min -= 1
-    end
-
-    return sprite
-   end
-  
-  def load_bitmaps
+  def load_sprites
     randPoke = getRandomCustomFusionForIntro(true, @customPokeList, @maxPoke)
     [
       # Background Stuff
@@ -178,35 +230,51 @@ class GenOneStyle
       [:poke, (get_unfused_sprite_path randPoke[0])],
       [:poke2, (get_unfused_sprite_path randPoke[1])],
       [:fpoke, (get_fusion_sprite_path randPoke[0], randPoke[1])]
-    ].each do |bitmap| 
-      @bitmaps[bitmap[0]] = pbBitmap bitmap[1]
+    ].each do |name_path| 
+      name, path = name_path
+      @sprites[name] = Animation::Animated_Sprite.new(@viewport) 
+      @sprites[name].bitmap = pbBitmap path
+      @sprites[name].visible = false
     end
   end
 
-  def intro 
-    bg_rect = @bitmaps[:bg].rect
-    # Turn the opacity of two unfused pokemon slowly up
-    poke1_opacity = animate_bitmap_blit @bitmaps[:poke], bg_rect, 64,
-      x_start: 400, y_start: 75,
-      opacity_start: 0, opacity_end: 256
-    poke1_opacity.flash(nil,100)
-    poke2_opacity = animate_bitmap_blit @bitmaps[:poke2], bg_rect, 64,
-      x_start: -150, y_start: 75,
-      opacity_start: 0, opacity_end: 256
-    play_bitmaps_to_end poke1_opacity.bitmap, poke2_opacity.bitmap
+  def intro
+    Graphics.update
+    
+    slide = Animation::Animation_Curve.new ->(v){@sprites[:bg].x=v}, :linear_interpolation
+
+    slide.add_point Vector[0,-Graphics.width]
+    slide.add_point Vector[0.2,0]
+    @sprites[:bg].curves.append slide
+
+    while true
+      @sprites[:bg].update
+      #binding.break
+      Graphics.update
+    end
+
+    ## Turn the opacity of two unfused pokemon slowly up
+    #poke1_opacity = animate_bitmap_blit @bitmaps[:poke], bg_rect, 64,
+    #  x_start: 400, y_start: 75,
+    #  opacity_start: 0, opacity_end: 256
+    #poke1_opacity.flash(nil,100)
+    #poke2_opacity = animate_bitmap_blit @bitmaps[:poke2], bg_rect, 64,
+    #  x_start: -150, y_start: 75,
+    #  opacity_start: 0, opacity_end: 256
+    #play_bitmaps_to_end poke1_opacity.bitmap, poke2_opacity.bitmap
    
-    # Background image slides in from left screen border
-    bg_slide_in = animate_bitmap_blit @bitmaps[:bg], bg_rect, 8,
-      x_start: -bg_rect.width, x_end: 0, on_top: false
-    play_bitmaps_to_end bg_slide_in.bitmap
+    ## Background image slides in from left screen border
+    #bg_slide_in = animate_bitmap_blit @bitmaps[:bg], bg_rect, 8,
+    #  x_start: -bg_rect.width, x_end: 0, on_top: false
+    #play_bitmaps_to_end bg_slide_in.bitmap
 
-    # Bars slide in from the right screen border
-    bars_slide_in = animate_bitmap_blit @bitmaps[:bars], bg_rect, 8,
-      x_start: bg_rect.width, x_end: 0
-    play_bitmaps_to_end bars_slide_in.bitmap
+    ## Bars slide in from the right screen border
+    #bars_slide_in = animate_bitmap_blit @bitmaps[:bars], bg_rect, 8,
+    #  x_start: bg_rect.width, x_end: 0
+    #play_bitmaps_to_end bars_slide_in.bitmap
 
-    # Logo appears and goes form purly white to its real colors
-    logo
+    ## Logo appears and goes form purly white to its real colors
+    #logo
 
   end
 
