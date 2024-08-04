@@ -236,67 +236,51 @@ class AnimatedSprite < SpriteWrapper
   attr_reader :playing
 
   def initializeLong(animname, framecount, framewidth, frameheight, frameskip)
-    @animname = pbBitmapName(animname)
-    @realframes = 0
-    @frameskip = [1, frameskip].max
-    @frameskip *= Graphics.frame_rate / 20
-    raise _INTL("Frame width is 0") if framewidth == 0
-    raise _INTL("Frame height is 0") if frameheight == 0
-    begin
-      @animbitmap = AnimatedBitmap.new(animname).deanimate
-    rescue
-      @animbitmap = Bitmap.new(framewidth, frameheight)
+    bitmap = (animname.is_a? String) ? (Bitmap.new animname) : (animname)
+    if framewidth == 0 or frameheight == 0
+      framewidth = bitmap.width / 4
+      frameheight = bitmap.height
     end
-    if @animbitmap.width % framewidth != 0
-      raise _INTL("Bitmap's width ({1}) is not a multiple of frame width ({2}) [Bitmap={3}]",
-                  @animbitmap.width, framewidth, animname)
-    end
-    if @animbitmap.height % frameheight != 0
-      raise _INTL("Bitmap's height ({1}) is not a multiple of frame height ({2}) [Bitmap={3}]",
-                  @animbitmap.height, frameheight, animname)
-    end
-    @framecount = framecount
     @framewidth = framewidth
     @frameheight = frameheight
-    @framesperrow = @animbitmap.width / @framewidth
-    @playing = false
-    self.bitmap = @animbitmap
-    self.src_rect.width = @framewidth
-    self.src_rect.height = @frameheight
-    self.frame = 0
+      
+    raise _INTL("Frame width is 0") if framewidth == 0
+    raise _INTL("Frame height is 0") if frameheight == 0
+    if bitmap.width % framewidth != 0
+      raise _INTL("Bitmap's width ({1}) is not a multiple of frame width ({2}) [Bitmap={3}]",
+                  bitmap.width, framewidth, animname)
+    end
+    if bitmap.height % frameheight != 0
+      raise _INTL("Bitmap's height ({1}) is not a multiple of frame height ({2}) [Bitmap={3}]",
+                  bitmap.height, frameheight, animname)
+    end
+    
+    framesperrow = bitmap.width / framewidth
+    
+    bitmap_combined = nil
+    framecount.times do |i|
+      rect = Rect.new i % framesperrow * framewidth, i / framesperrow * frameheight, framewidth, frameheight
+      bitmap_cutout = Bitmap.new framewidth, frameheight
+      bitmap_cutout.blt 0, 0, bitmap, rect
+      if i == 0
+        bitmap_combined = bitmap_cutout
+      else
+        bitmap_combined.add_frame bitmap_cutout
+      end
+    end
+    bitmap_combined.frame_rate = 40.0 / frameskip
+    if bitmap_combined.animated?
+      bitmap_combined.playing = true
+    end
+ 
+    self.bitmap = bitmap_combined
   end
 
-  # Shorter version of AnimationSprite.  All frames are placed on a single row
-  # of the bitmap, so that the width and height need not be defined beforehand
-  def initializeShort(animname, framecount, frameskip)
-    @animname = pbBitmapName(animname)
-    @realframes = 0
-    @frameskip = [1, frameskip].max
-    @frameskip *= Graphics.frame_rate / 20
-    begin
-      @animbitmap = AnimatedBitmap.new(animname).deanimate
-    rescue
-      @animbitmap = Bitmap.new(framecount * 4, 32)
-    end
-    if @animbitmap.width % framecount != 0
-      raise _INTL("Bitmap's width ({1}) is not a multiple of frame count ({2}) [Bitmap={3}]",
-                  @animbitmap.width, framewidth, animname)
-    end
-    @framecount = framecount
-    @framewidth = @animbitmap.width / @framecount
-    @frameheight = @animbitmap.height
-    @framesperrow = framecount
-    @playing = false
-    self.bitmap = @animbitmap
-    self.src_rect.width = @framewidth
-    self.src_rect.height = @frameheight
-    self.frame = 0
-  end
+  
 
   def initialize(*args)
     if args.length == 1
-      super(args[0][3])
-      initializeShort(args[0][0], args[0][1], args[0][2])
+      raise "Short initialization is deprecated"
     else
       super(args[5])
       initializeLong(args[0], args[1], args[2], args[3], args[4])
@@ -304,12 +288,12 @@ class AnimatedSprite < SpriteWrapper
   end
 
   def self.create(animname, framecount, frameskip, viewport = nil)
-    return self.new([animname, framecount, frameskip, viewport])
+    return self.new animname, framecount, 0, 0, frameskip
   end
 
   def dispose
     return if disposed?
-    @animbitmap.dispose
+    self.bitmap.dispose
     @animbitmap = nil
     super
   end
@@ -319,15 +303,10 @@ class AnimatedSprite < SpriteWrapper
   end
 
   def frame=(value)
-    @frame = value
-    @realframes = 0
-    self.src_rect.x = @frame % @framesperrow * @framewidth
-    self.src_rect.y = @frame / @framesperrow * @frameheight
   end
 
   def start
-    @playing = true
-    @realframes = 0
+    @playing = true 
   end
 
   alias play start
@@ -336,22 +315,9 @@ class AnimatedSprite < SpriteWrapper
     @playing = false
   end
 
-  def reset
-    @frame=0
-    @realframes = 0
+  def reset 
   end
 
-  def update
-    super
-    if @playing
-      @realframes += 1
-      if @realframes == @frameskip
-        @realframes = 0
-        self.frame += 1
-        self.frame %= self.framecount
-      end
-    end
-  end
 end
 
 #===============================================================================
