@@ -22,6 +22,21 @@ module Graphics
   def self.delta_s
     return self.delta.to_f / 1_000_000
   end
+
+  class << self
+    attr_accessor :time
+  end
+  self.time = 0
+
+  class << Graphics
+    alias mkxpz_update update
+  end
+
+  def self.update
+    self.time += self.delta
+    mkxpz_update
+    return delta
+  end
 end
 
 def pbSetResizeFactor(factor)

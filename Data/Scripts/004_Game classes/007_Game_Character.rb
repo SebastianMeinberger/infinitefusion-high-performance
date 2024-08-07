@@ -66,7 +66,8 @@ class Game_Character
     @direction_fix = false
     @always_on_top = false
     @anime_count = 0
-    @stop_count = 0
+    @last_time_moved = 0
+    @seconds_between_moves = 0
     @jump_peak = 0 # Max height while jumping
     @jump_distance = 0 # Total distance of jump
     @jump_distance_left = 0 # Distance left to travel
@@ -101,8 +102,7 @@ class Game_Character
     @opacity = opacity
   end
 
-  def move_speed=(val)
-    return if val == @move_speed
+  def move_speed=(val) 
     @move_speed = val
     # @move_speed_real is the number of quarter-pixels to move each frame. There
     # are 128 quarter-pixels per tile. By default, it is calculated from
@@ -113,52 +113,41 @@ class Game_Character
     # 4 => 25.6   # 5 frames per tile - running speed (2x walking speed)
     # 5 => 32     # 4 frames per tile - cycling speed (1.25x running speed)
     # 6 => 64     # 2 frames per tile
-    self.move_speed_real = (val == 6) ? 64 : (val == 5) ? 32 : (2 ** (val + 1)) * 0.8
-  end
-
+    if val < 5
+      @quarter_pix_per_sec = 128 * (2 ** (val))
+    else
+      @quarter_pix_per_sec = 1280 * (2 ** (val - 5))
+    end
+  end 
+  
   def move_speed_real
-    self.move_speed = @move_speed if !@move_speed_real
-    return @move_speed_real
-  end
-
-  def move_speed_real=(val)
-    @move_speed_real = val * 40.0 / Graphics.frame_rate
+    return @quarter_pix_per_sec * Graphics.delta
   end
 
   def jump_speed_real
-    self.jump_speed_real = (2 ** (3 + 1)) * 0.8 if !@jump_speed_real # 3 is walking speed
-    return @jump_speed_real
+    # Same as walking move speed
+    return 512 * Graphics.delta
   end
 
-  def jump_speed_real=(val)
-    @jump_speed_real = val * 40.0 / Graphics.frame_rate
-  end
-
-  def move_frequency=(val)
-    return if val == @move_frequency
-    @move_frequency = val
-    # @move_frequency_real is the number of frames to wait between each action
-    # in a move route (not forced). Specifically, this is the number of frames
-    # to wait after the character stops moving because of the previous action.
-    # By default, it is calculated from @move_frequency and has these values
-    # (assuming 40 fps):
-    # 1 => 190   # 4.75 seconds
-    # 2 => 144   # 3.6 seconds
-    # 3 => 102   # 2.55 seconds
-    # 4 => 64    # 1.6 seconds
-    # 5 => 30    # 0.75 seconds
-    # 6 => 0     # 0 seconds, i.e. continuous movement
-    self.move_frequency_real = (40 - val * 2) * (6 - val)
-  end
-
-  def move_frequency_real
-    self.move_frequency = @move_frequency if !@move_frequency_real
-    return @move_frequency_real
-  end
-
-  def move_frequency_real=(val)
-    @move_frequency_real = val * Graphics.frame_rate / 40.0
-  end
+  def move_frequency= val
+    sbm = 0
+    # Just the relevant values of 0.05 * val**2 + 1.3*val + 6, but before calculating it with a quadratic function and then documenting the relevant values, we can better usa a lookup table
+    case val
+    when 1
+      sbm = 4.75
+    when 2
+      sbm = 3.6
+    when 3
+      sbm = 2.55
+    when 4
+      sbm = 1.6
+    when 5
+      sbm = 0.75
+    when 6
+      sbm = 0
+    end
+    @seconds_between_moves = sbm
+  end 
 
   def bob_height
     @bob_height = 0 if !@bob_height
@@ -405,7 +394,7 @@ class Game_Character
   end
 
   def increase_steps
-    @stop_count = 0
+    @last_time_moved = Graphics.time
     triggerLeaveTile
   end
 
@@ -419,7 +408,7 @@ class Game_Character
     when 4 then
       move_forward
     when 5 then
-      @stop_count = 0
+      @last_time_moved = Graphics.time
     end
   end
 
@@ -454,7 +443,7 @@ class Game_Character
             @move_route_index = @original_move_route_index
             @original_move_route = nil
           end
-          @stop_count = 0
+          @last_time_moved = Graphics.time
         end
         return
       end
@@ -920,7 +909,7 @@ class Game_Character
       @jump_speed_real = nil # Reset jump speed
       @jump_count = Game_Map::REAL_RES_X / jump_speed_real # Number of frames to jump one tile
     end
-    @stop_count = 0
+    @last_time_moved = Graphics.time
     if self.is_a?(Game_Player)
       $PokemonTemp.dependentEvents.pbMoveDependentEvents
     end
@@ -957,7 +946,8 @@ class Game_Character
     return if @direction_fix
     oldDirection = @direction
     @direction = dir
-    @stop_count = 0
+    #@stop_count = 0
+    @last_time_moved = Graphics.time
     pbCheckEventTriggerAfterTurning if dir != oldDirection
   end
 
@@ -1090,7 +1080,7 @@ class Game_Character
     # 4 => @stop_count > 64    # 1.6 seconds
     # 5 => @stop_count > 30    # 0.75 seconds
     # 6 => @stop_count > 0     # 0 seconds
-    if @stop_count >= self.move_frequency_real
+    if @last_time_moved + @seconds_between_moves <= Graphics.time
       case @move_type
       when 1 then
         move_type_random
@@ -1142,7 +1132,6 @@ class Game_Character
 
   def update_stop
     @anime_count += 1 if @step_anime
-    @stop_count += 1 if !@starting && !lock?
     @moved_this_frame = false
     @stopped_this_frame = false
   end
