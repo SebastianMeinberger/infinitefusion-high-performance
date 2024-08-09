@@ -581,11 +581,15 @@ module Animation
       return (not @@sprites_to_update.empty?)
     end
 
-    def self.wait_until_all_finished skip=false
-      while self.update_animations and not skip
+    def self.wait_until_all_finished skip: false, skippable: false, dispose: false
+      sprites_to_update = @@sprites_to_update.map {|x| x}
+      while self.update_animations and (not skip or not skippable)
         Graphics.update
         Input.update
         skip = Input.press?Input::C
+      end
+      if dispose
+        sprites_to_update.each {|sprite| sprite.dispose}
       end
       return skip
     end
@@ -597,6 +601,7 @@ module Animation
 
     def add_curve curve 
       if @curves.length == 0
+        @start_time = Graphics.time
         @@sprites_to_update.append self
       end
       @curves.append curve
@@ -605,25 +610,40 @@ module Animation
 
     def initialize *args
      @curves = []
-     @runtime = 0
+     @start_time = Graphics.time
      super(*args)
+    end
+
+    def runtime
+      return Graphics.time - @start_time
     end
     
     def update
       finished_curves = []
       @curves.each do |c| 
-        value = c.apply @runtime
+        value = c.apply (runtime)
         call_setter c.property_setter, value
         finished_curves.append c if c.is_finished
       end
       finished_curves.each {|c| @curves.delete c}
       
-      @runtime += Graphics.delta
       if not finished_curves.empty? and @curves.empty?
         # A curve finished and none is left. No need to update, untill a new curve is added
-        @@sprites_to_update.delete self
-        @runtime = 0
+        @@sprites_to_update.delete self 
       end  
+      super
+    end
+
+    def change_origin origin
+      case origin
+      when PictureOrigin::Center
+        self.ox = self.src_rect.width / 2
+        self.oy = self.src_rect.height / 2
+      end
+    end
+
+    def dispose
+      @@sprites_to_update.delete self
       super
     end
 
