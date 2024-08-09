@@ -620,20 +620,17 @@ module Transitions
   # HGSS wild indoor night (origin=3)
   # HGSS wild cave (origin=3)
   #=============================================================================
-  class DiagonalBubble < Square_Transition
-    def self.play duration, cx: 8, cy: 6
+  class DiagonalBubbleTL < Square_Transition
+    def self.play duration, cx: 8, cy: 6, invert: false
       zoom_duration = 0.1   
       squares = Array.new(cx){Array.new(cy)}
-      diagonal_vec = Vector[cx,cy]
+      diagonal_vec = Vector[cx-1,cy-1]
       cx.times do |i|
-        cy.times do |j|
-          if i==0 and j==0
-            squares[i][j]=0
-          else
-            angle = Vector[i,j].angle_with diagonal_vec
-            distance_on_dial = Math.cos(angle) * Vector[i,j].magnitude
-            squares[i][j] = duration * (distance_on_dial/Vector[cx,cy].magnitude)
-          end
+        cy.times do |j| 
+          angle = Vector[i+1,j+1].angle_with diagonal_vec
+          distance_on_diag = Math.cos(angle) * Vector[i,j].magnitude
+          relative_distance = (invert ? diagonal_vec.magnitude - distance_on_diag : distance_on_diag)/diagonal_vec.magnitude
+          squares[i][j] = duration * relative_distance
         end
       end
       super duration, zoom_duration, squares, ->(o,v){
@@ -641,6 +638,12 @@ module Transitions
         o.zoom_y = v
       }
     end 
+  end
+
+  class DiagonalBubbleBR < DiagonalBubbleTL
+    def self.play duration, cx: 8, cy: 6
+      super duration, cx: cx, cy: cy, invert: true 
+    end
   end
 
   #=============================================================================
