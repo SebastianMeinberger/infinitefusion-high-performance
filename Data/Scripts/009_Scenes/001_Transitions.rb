@@ -1,103 +1,3 @@
-#module Graphics
-#  @@transition = nil
-#  STOP_WHILE_TRANSITION = true
-#
-#  unless defined?(transition_KGC_SpecialTransition)
-#    class << Graphics
-#      alias transition_KGC_SpecialTransition transition
-#    end
-#
-#    class << Graphics
-#      alias update_KGC_SpecialTransition update
-#    end
-#  end
-#
-#  def self.transition(duration = 8, filename = "", vague = 20)
-#    duration = duration.floor
-#    if judge_special_transition(duration, filename)
-#      duration = 0
-#      filename = ""
-#    end
-#    begin
-#      transition_KGC_SpecialTransition(duration, filename, vague)
-#    rescue Exception
-#      if filename != ""
-#        transition_KGC_SpecialTransition(duration, "", vague)
-#      end
-#    end
-#    if STOP_WHILE_TRANSITION && !@_interrupt_transition
-#      while @@transition && !@@transition.disposed?
-#        update
-#      end
-#    end
-#  end
-#
-#  def self.update
-#    update_KGC_SpecialTransition
-#=begin
-#    if Graphics.frame_count % 40 == 0
-#      count = 0
-#      ObjectSpace.each_object(Object) { |o| count += 1 }
-#      echoln("Objects: #{count}")
-#    end
-#=end
-#    @@transition.update if @@transition && !@@transition.disposed?
-#    @@transition = nil if @@transition && @@transition.disposed?
-#  end
-#
-#  def self.judge_special_transition(duration,filename)
-#    return false if @_interrupt_transition
-#    ret = true
-#    if @@transition && !@@transition.disposed?
-#      @@transition.dispose
-#      @@transition = nil
-#    end
-#    dc = File.basename(filename).downcase
-#    case dc
-#    # Other coded transitions
-#    when "breakingglass"    then @@transition = Transitions::BreakingGlass.new(duration)
-#    when "rotatingpieces"   then @@transition = Transitions::ShrinkingPieces.new(duration, true)
-#    when "shrinkingpieces"  then @@transition = Transitions::ShrinkingPieces.new(duration, false)
-#    when "splash"           then @@transition = Transitions::SplashTransition.new(duration)
-#    when "random_stripe_v"  then @@transition = Transitions::RandomStripeTransition.new(duration, 0)
-#    when "random_stripe_h"  then @@transition = Transitions::RandomStripeTransition.new(duration, 1)
-#    when "zoomin"           then @@transition = Transitions::ZoomInTransition.new(duration)
-#    when "scrolldown"       then @@transition = Transitions::ScrollScreen.new(duration, 2)
-#    when "scrollleft"       then @@transition = Transitions::ScrollScreen.new(duration, 4)
-#    when "scrollright"      then @@transition = Transitions::ScrollScreen.new(duration, 6)
-#    when "scrollup"         then @@transition = Transitions::ScrollScreen.new(duration, 8)
-#    when "scrolldownleft"   then @@transition = Transitions::ScrollScreen.new(duration, 1)
-#    when "scrolldownright"  then @@transition = Transitions::ScrollScreen.new(duration, 3)
-#    when "scrollupleft"     then @@transition = Transitions::ScrollScreen.new(duration, 7)
-#    when "scrollupright"    then @@transition = Transitions::ScrollScreen.new(duration, 9)
-#    when "mosaic"           then @@transition = Transitions::MosaicTransition.new(duration)
-#    # HGSS transitions
-#    when "snakesquares"     then @@transition = Transitions::SnakeSquares.new(duration)
-#    when "diagonalbubbletl" then @@transition = Transitions::DiagonalBubble.new(duration, 0)
-#    when "diagonalbubbletr" then @@transition = Transitions::DiagonalBubble.new(duration, 1)
-#    when "diagonalbubblebl" then @@transition = Transitions::DiagonalBubble.new(duration, 2)
-#    when "diagonalbubblebr" then @@transition = Transitions::DiagonalBubble.new(duration, 3)
-#    when "risingsplash"     then @@transition = Transitions::RisingSplash.new(duration)
-#    when "twoballpass"      then @@transition = Transitions::TwoBallPass.new(duration)
-#    when "spinballsplit"    then @@transition = Transitions::SpinBallSplit.new(duration)
-#    when "threeballdown"    then @@transition = Transitions::ThreeBallDown.new(duration)
-#    when "balldown"         then @@transition = Transitions::BallDown.new(duration)
-#    when "wavythreeballup"  then @@transition = Transitions::WavyThreeBallUp.new(duration)
-#    when "wavyspinball"     then @@transition = Transitions::WavySpinBall.new(duration)
-#    when "fourballburst"    then @@transition = Transitions::FourBallBurst.new(duration)
-#    # Graphic transitions
-#    when "fadetoblack"      then @@transition = Transitions::FadeToBlack.new(duration)
-#    when ""                 then @@transition = Transitions::FadeFromBlack.new(duration)
-#    else                         ret = false
-#    end
-#    Graphics.frame_reset if ret
-#    return ret
-#  end
-#end
-
-
-
-#===============================================================================
 # Screen transition classes
 #===============================================================================
 module Transitions
@@ -664,36 +564,54 @@ module Transitions
   #=============================================================================
   # HGSS wild outdoor
   #=============================================================================
-  class SnakeSquares
-    def self.play duration, cx: 8, cy: 6
-      bitmap = Bitmap.new Graphics.width/cx, Graphics.height/cy
-      bitmap.fill_rect 0, 0, bitmap.width, bitmap.height, Color.new(0,0,0)
-      square_zoom_duration = 0.1
-      time_offset = (duration-square_zoom_duration)/((cy/2 + 1)*cx)
-      
-
-      square_line = -> (x_start, y_start, x_dir, y_dir) do
-        start_time = 0
-        (cy/2).times do |y_i|
-          cx.times do |x_i| 
+  class Square_Transition
+    
+    def self.play transition_duration, zoom_duration, squares, property, cx: 8, cy: 6
+      square = Bitmap.new Graphics.width/cx, Graphics.height/cy 
+      square.fill_rect 0, 0, square.width, square.height, Color.new(0,0,0)
+      x_pos = square.width/2
+      squares.each do |col|
+        y_pos = square.height/2
+        col.each do |start_time|
+          if not start_time.nil?
             sprite = Animation::Animated_Sprite.new
-            sprite.x = x_start
-            sprite.y = y_start
-            sprite.create_curve :zoom_x=, :linear_interpolation, [start_time,0], [start_time+square_zoom_duration,1]
-            sprite.bitmap = bitmap
-
-            start_time += time_offset
-            x_start += x_dir
+            sprite.bitmap = square
+            sprite.change_origin PictureOrigin::Center
+            sprite.x = x_pos
+            sprite.y = y_pos
+            sprite.create_curve property, :linear_interpolation, [start_time,0], [start_time+zoom_duration,1]
           end
-          y_start += y_dir
-          x_dir *= -1
-          x_start += x_dir
-        end  
-      end 
-      w,h = bitmap.width, bitmap.height
-      square_line.call 0, 0, w, h
-      square_line.call (cx-1)*w, (cy-1)*h, -w, -h
+          y_pos += square.height
+        end
+        x_pos += square.width
+      end
       Animation::Animated_Sprite.wait_until_all_finished dispose: true
+    end
+  end
+
+  class SnakeSquares < Square_Transition
+    def self.play duration, cx: 8, cy: 6
+      zoom_duration = 0.1
+      time_offset = (duration-zoom_duration)/((cy/2 + 1)*cx)      
+      squares = Array.new(cx){Array.new(cy)}
+
+      snake_pattern = -> (x_pos, y_pos, x_dir, y_dir) do
+        start_time = 0
+        (cy/2).times do
+          cx.times do
+            squares[x_pos][y_pos] = start_time
+            start_time += time_offset
+            x_pos += x_dir
+          end
+        y_pos += y_dir
+        x_dir *= -1
+        x_pos += x_dir
+        end
+      end
+
+      snake_pattern.call 0, 0, 1, 1
+      snake_pattern.call cx-1, cy-1, -1, -1
+      super duration, zoom_duration, squares, :zoom_x=
     end
   end
  
