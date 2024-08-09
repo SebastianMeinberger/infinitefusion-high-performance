@@ -565,7 +565,7 @@ module Transitions
   # HGSS wild outdoor
   #=============================================================================
   class Square_Transition
-    
+  require 'matrix'
     def self.play transition_duration, zoom_duration, squares, property, cx: 8, cy: 6
       square = Bitmap.new Graphics.width/cx, Graphics.height/cy 
       square.fill_rect 0, 0, square.width, square.height, Color.new(0,0,0)
@@ -620,82 +620,27 @@ module Transitions
   # HGSS wild indoor night (origin=3)
   # HGSS wild cave (origin=3)
   #=============================================================================
-  class DiagonalBubble
-    def initialize(numframes,origin=0)
-      @numframes = numframes
-      @duration = numframes
-      @disposed = false
-      @bitmap = RPG::Cache.transition("black_square")
-      if !@bitmap
-        @disposed = true
-        return
-      end
-      width  = @bitmap.width
-      height = @bitmap.height
-      cx = Graphics.width/width # 8
-      cy = Graphics.height/height # 6
-      @numtiles = cx*cy
-      @viewport = Viewport.new(0,0,Graphics.width,Graphics.height)
-      @viewport.z = 99999
-      @sprites = []
-      @frame = []
-      # 1.2, 0.6 and 0.8 determined by trigonometry of default screen size
-      l = 1.2*Graphics.width/(@numtiles-8)
-      for i in 0...cy
-        for j in 0...cx
-          k = i*cx+j
-          @sprites[k] = Sprite.new(@viewport)
-          @sprites[k].x = width*j+width/2
-          @sprites[k].y = height*i+height/2
-          @sprites[k].ox = width/2
-          @sprites[k].oy = height/2
-          @sprites[k].visible = false
-          @sprites[k].bitmap = @bitmap
-          case origin
-          when 1 then k = i*cx+(cx-1-j)               # Top right
-          when 2 then k = @numtiles-1-(i*cx+(cx-1-j)) # Bottom left
-          when 3 then k = @numtiles-1-k               # Bottom right
-          end
-          @frame[k] = ((0.6*j*width+0.8*i*height)*(@numframes/50.0)/l).floor
-        end
-      end
-      @addzoom  = 0.125*50/@numframes
-    end
-
-    def disposed?; @disposed; end
-
-    def dispose
-      if !disposed?
-        @bitmap.dispose
-        for i in 0...@numtiles
-          if @sprites[i]
-            @sprites[i].visible = false
-            @sprites[i].dispose
-          end
-        end
-        @sprites.clear
-        @viewport.dispose if @viewport
-        @disposed = true
-      end
-    end
-
-    def update
-      return if disposed?
-      if @duration==0
-        dispose
-      else
-        count = @numframes-@duration
-        for i in 0...@numtiles
-          if @frame[i]<count && @frame[i]+(1/@addzoom)+1>=count
-            @sprites[i].visible = true
-            @sprites[i].zoom_x = @addzoom*(count-@frame[i])
-            @sprites[i].zoom_x = 1.0 if @sprites[i].zoom_x>1.0
-            @sprites[i].zoom_y = @sprites[i].zoom_x
+  class DiagonalBubble < Square_Transition
+    def self.play duration, cx: 8, cy: 6
+      zoom_duration = 0.1   
+      squares = Array.new(cx){Array.new(cy)}
+      diagonal_vec = Vector[cx,cy]
+      cx.times do |i|
+        cy.times do |j|
+          if i==0 and j==0
+            squares[i][j]=0
+          else
+            angle = Vector[i,j].angle_with diagonal_vec
+            distance_on_dial = Math.cos(angle) * Vector[i,j].magnitude
+            squares[i][j] = duration * (distance_on_dial/Vector[cx,cy].magnitude)
           end
         end
       end
-      @duration -= 1
-    end
+      super duration, zoom_duration, squares, ->(o,v){
+        o.zoom_x = v
+        o.zoom_y = v
+      }
+    end 
   end
 
   #=============================================================================
