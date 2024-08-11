@@ -503,6 +503,10 @@ module Animation
      
     def initialize property_setter, *points, looping: false
       @next_index = 0
+      if points[0][0] != 0
+        # If not explicitly set, start animation from value 0
+        points.prepend [0,0]
+      end
       points = points.sort {|x,y| x[0] <=> y[0]}
       @points = points
       # Loop and not seemless?
@@ -554,6 +558,22 @@ module Animation
       return m*runtime + b
     end      
   end
+
+  class Sin_Animation < Animation_Curve   
+
+    def initialize property_setter, duration, amplitude: 1, phase: 0, offset: 0, wave_length: 1, looping: false
+      @amplitude = amplitude
+      @phase = phase
+      @offset = offset
+      @wave_length = wave_length
+      super property_setter, duration, looping: looping
+    end
+
+    def interpolation runtime
+      return @amplitude * Math.sin(runtime * @wave_length + @phase) + @offset
+    end
+  end
+
  
   class Animated_Sprite < Sprite
     @@sprites_to_update = []
@@ -571,14 +591,15 @@ module Animation
         Input.update
         skip = Input.press?Input::C
       end
+      Graphics.update
       if dispose
         sprites_to_update.each {|sprite| sprite.dispose}
       end
       return skip
     end
     
-    def create_curve property_setter, *points, looping: false, interpolation: Linear_Animation
-      curve = interpolation.new property_setter, *points, looping: looping 
+    def create_curve property_setter, *points, looping: false
+      curve = Linear_Animation.new property_setter, *points, looping: looping 
       add_curve curve
     end
 
