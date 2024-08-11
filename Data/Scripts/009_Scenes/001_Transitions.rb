@@ -579,7 +579,7 @@ module Transitions
             sprite.change_origin PictureOrigin::Center
             sprite.x = x_pos
             sprite.y = y_pos
-            sprite.create_curve property, :linear_interpolation, [start_time,0], [start_time+zoom_duration,1]
+            sprite.create_curve property, [start_time,0], [start_time+zoom_duration,1]
           end
           y_pos += square.height
         end
@@ -650,103 +650,30 @@ module Transitions
   # HGSS wild water
   #=============================================================================
   class RisingSplash
-    def initialize(numframes)
-      @numframes = numframes
-      @duration = numframes
-      @disposed = false
-      if @numframes<=0
-        @disposed = true
-        return
-      end
-      @bubblebitmap = RPG::Cache.transition("water_1")
-      @splashbitmap = RPG::Cache.transition("water_2")
-      @blackbitmap  = RPG::Cache.transition("black_half")
-      @buffer = Graphics.snap_to_bitmap
-      if !@bubblebitmap || !@splashbitmap || !@blackbitmap || !@buffer
-        @disposed = true
-        return
-      end
-      @width  = @buffer.width
-      @height = @buffer.height
-      @viewport = Viewport.new(0,0,@width,@height)
-      @viewport.z = 99999
-      @rearsprite = Sprite.new(@viewport)
-      @rearsprite.z = 1
-      @rearsprite.zoom_y = 2.0
-      @rearsprite.bitmap = @blackbitmap
-      @bgsprites = []
-      rect = Rect.new(0,0,@width,2)
-      for i in 0...@height/2
-        @bgsprites[i] = Sprite.new(@viewport)
-        @bgsprites[i].y = i*2
-        @bgsprites[i].z = 2
-        @bgsprites[i].bitmap = @buffer
-        rect.y = i*2
-        @bgsprites[i].src_rect = rect
-      end
-      @bubblesprite = Sprite.new(@viewport)
-      @bubblesprite.y = @height
-      @bubblesprite.z = 3
-      @bubblesprite.bitmap = @bubblebitmap
-      @splashsprite = Sprite.new(@viewport)
-      @splashsprite.y = @height
-      @splashsprite.z = 4
-      @splashsprite.bitmap = @splashbitmap
-      @blacksprite = Sprite.new(@viewport)
-      @blacksprite.y = @height
-      @blacksprite.z = 5
-      @blacksprite.zoom_y = 2.0
-      @blacksprite.bitmap = @blackbitmap
-      @bubblesuby = @height*2/@numframes
-      @splashsuby = @bubblesuby*2
-      @blacksuby  = @height/(@numframes*0.1).floor
-      @angmult = 2/(@numframes/50.0)
-    end
+    def self.play duration
+      screen = Animation::Animated_Sprite.new
+      screen.bitmap = Graphics.snap_to_bitmap
+      screen.wave_length = 74
+      screen.create_curve :wave_phase=, [duration, 3600]
+      screen.create_curve :wave_amp=, [0.1,6]
+      
+      sprite = Animation::Animated_Sprite.new
+      sprite.bitmap = RPG::Cache.transition("water_1")
+      sprite.create_curve :y=, [0,Graphics.height], [duration,-Graphics.height]
+      sprite.add_curve(Animation::Sin_Animation.new :x=, duration, amplitude: 32, wave_length: 2*Math::PI)
 
-    def disposed?; @disposed; end
+      splash = Animation::Animated_Sprite.new
+      splash.bitmap = RPG::Cache.transition("water_2")
+      splash.create_curve :y=, [0, Graphics.height], [duration/2, Graphics.height], [duration, -Graphics.height]
+      
+      bitmap = Bitmap.new Graphics.width, Graphics.height
+      bitmap.fill_rect 0, 0, Graphics.width, Graphics.height, Color.new(0,0,0)
+      black_half = Animation::Animated_Sprite.new
+      black_half.bitmap = bitmap
+      pos = Graphics.height+0.95*splash.bitmap.height
+      black_half.create_curve :y=, [0, pos], [duration/2, pos], [duration, 0]
 
-    def dispose
-      return if disposed?
-      @buffer.dispose if @buffer
-      @buffer = nil
-      @bubblebitmap.dispose if @bubblebitmap
-      @bubblebitmap = nil
-      @splashbitmap.dispose if @splashbitmap
-      @splashbitmap = nil
-      @blackbitmap.dispose if @blackbitmap
-      @blackbitmap = nil
-      @rearsprite.dispose if @rearsprite
-      for i in @bgsprites; i.dispose if i; end
-      @bgsprites.clear
-      @bubblesprite.dispose if @bubblesprite
-      @splashsprite.dispose if @splashsprite
-      @blacksprite.dispose if @blacksprite
-      @viewport.dispose if @viewport
-      @disposed = true
-    end
-
-    def update
-      return if disposed?
-      if @duration==0
-        dispose
-      else
-        angadd = (@numframes-@duration)*@angmult
-        amp = 6*angadd/8; amp = 6 if amp>6
-        for i in 0...@bgsprites.length
-          @bgsprites[i].x = amp*Math.sin((i+angadd)*Math::PI/10)
-        end
-        @bubblesprite.x = (@width-@bubblebitmap.width)/2
-        @bubblesprite.x -= 32*Math.sin((@numframes-@duration)/(@numframes/50)*3*Math::PI/60)
-        @bubblesprite.y -= @bubblesuby
-        if @duration<@numframes*0.5
-          @splashsprite.y -= @splashsuby
-        end
-        if @duration<@numframes*0.1
-          @blacksprite.y -= @blacksuby
-          @blacksprite.y = 0 if @blacksprite.y<0
-        end
-      end
-      @duration -= 1
+      Animation::Animated_Sprite.wait_until_all_finished dispose: true
     end
   end
 
