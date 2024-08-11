@@ -13,7 +13,11 @@ SCREENSTYLE = 1
 class Scene_Intro
   def playIntroCinematic
     intro_sprite = Sprite.new
-    intro_sprite.bitmap = Bitmap.new("Graphics/Pictures/Intro/INTRO.gif")
+    intro_sprite.bitmap = Bitmap.new("Graphics/Pictures/Intro/INTRO")
+    14.downto(1).each do |i|
+      frame = Bitmap.new(sprintf "Graphics/Pictures/Intro/INTRO-%03d", i)
+      intro_sprite.bitmap.add_frame frame, 0
+    end
     pbBGMPlay("INTRO_music_cries")
     intro_sprite.bitmap.looping = false
     intro_sprite.bitmap.play
@@ -101,11 +105,10 @@ class GenOneStyle
   def intro 
     Graphics.update
     skip = false
-    wait_all = ->() {skip = Animation::Animated_Sprite.wait_until_all_finished skip}
+    wait_all = ->() {skip = Animation::Animated_Sprite.wait_until_all_finished skip: skip}
     
     # Turn the opacity of the two unfused pokemon slowly up. 
-    curve = Animation::Animation_Curve.new :opacity=,
-      :linear_interpolation, 
+    curve = Animation::Linear_Animation.new :opacity=, 
       [1.6,255]
     @sprites[:poke].add_curve curve
     @sprites[:poke2].add_curve curve 
@@ -115,7 +118,6 @@ class GenOneStyle
 
     # Background image slides in from left screen border
     @sprites[:bg].create_curve :x=,
-        :linear_interpolation,
         [0,-Graphics.width],
         [0.2,0]
 
@@ -123,7 +125,6 @@ class GenOneStyle
 
     # Bars slide in from the right screen border
     @sprites[:bars].create_curve :x=,
-      :linear_interpolation,
       [0,Graphics.width],
       [0.2,0]
 
@@ -133,7 +134,6 @@ class GenOneStyle
     ->(l=@sprites[:logo]) {
       l.x, l.y = 50, -20 
       l.create_curve -> (o,v){o.tone = Tone.new v, v, v},
-      :linear_interpolation,
       [0,255], # 255 on all color channels of tone => Sprite color is shifted to 100% white
       [0.4,0] # all color channels empty => Sprite color remains unaltered
     }.call
@@ -148,19 +148,16 @@ class GenOneStyle
       p2_x = @sprites[:poke2].x
       dir_vec = (p2_x - p1_x)
       @sprites[:poke].create_curve :x=,
-        :linear_interpolation,
         [0,p1_x],
         [6, p1_x + dir_vec/3.0], # 6 seconds for the first 2/3
         [7.5, p1_x + dir_vec/2.0] # double speed => 1.5 seconds for last 1/3
       @sprites[:poke2].create_curve :x=,
-        :linear_interpolation,
         [0,p2_x],
         [6,p2_x - dir_vec/3.0],
         [7.5,p2_x - dir_vec/2.0]
 
       # Shine when accalerating
-      curve = Animation::Animation_Curve.new -> (o,v) {o.tone = Tone.new v,v,v},
-        :linear_interpolation,
+      curve = Animation::Linear_Animation.new -> (o,v) {o.tone = Tone.new v,v,v},
         [6,0],
         [7.5,255]
       @sprites[:poke].add_curve curve
@@ -172,7 +169,6 @@ class GenOneStyle
       @sprites[:poke].visible = @sprites[:poke2].visible = false  
       @sprites[:fpoke].x, @sprites[:fpoke].y = 125, 75
       @sprites[:fpoke].create_curve -> (o,v) {o.tone = Tone.new v,v,v},
-        :linear_interpolation,
         [0,255],
         [0.2,0],
         [3,0]
