@@ -130,7 +130,7 @@ class PokemonIconSprite < Animation::Animated_Sprite
       end_time =  0.5 # Yellow HP - 0.5 seconds
     end
     end_time *= 0.5
-    self.create_curve :offset_y=, :linear_interpolation, [0, 0], [end_time,3], looping: true
+    self.create_curve :offset_y=, [0, -8], [end_time,0], looping: true
   end
 
   def offset_x= value
