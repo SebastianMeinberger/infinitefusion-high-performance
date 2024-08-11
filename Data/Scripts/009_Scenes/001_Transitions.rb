@@ -585,7 +585,7 @@ module Transitions
         end
         x_pos += square.width
       end
-      Animation::Animated_Sprite.wait_until_all_finished dispose: true
+      Animation.wait_until_all_finished w_dispose: true
     end
   end
 
@@ -673,7 +673,7 @@ module Transitions
       pos = Graphics.height+0.95*splash.bitmap.height
       black_half.create_curve :y=, [0, pos], [duration/2, pos], [duration, 0]
 
-      Animation::Animated_Sprite.wait_until_all_finished dispose: true
+      Animation.wait_until_all_finished w_dispose: true
     end
   end
 
@@ -681,6 +681,30 @@ module Transitions
   # HGSS trainer outdoor day
   #=============================================================================
   class TwoBallPass
+    def self.play duration
+      screen = Animation::Animated_Sprite.new
+      screen.bitmap = Graphics.snap_to_bitmap
+      # Two balls, one spinning in from left, one from right
+      ball_bitmap = RPG::Cache.transition "ball_small"
+      ball = []
+      2.times do |i|
+        ball[i] = Animation::Animated_Sprite.new
+        ball[i].bitmap = ball_bitmap
+        ball[i].change_origin PictureOrigin::Center
+        ball[i].y = (Graphics.height + (i*2-1)*ball_bitmap.height)/2
+        ball[i].create_curve :angle=, [0.25, 360], looping: true
+      end
+      l = -ball_bitmap.width/2
+      r = Graphics.width + ball_bitmap.width/2
+      ball[0].create_curve :x=, [0,l], [duration*0.6,r]
+      ball[1].create_curve :x=, [0,r], [duration*0.6,l]
+      Animation.wait_until_all_finished
+
+      #screen.create_curve ->(o,v) {o.x_zoom=v;o.y_zoom=v}, []
+    end
+  end
+
+  class TwoBallPassO
     def initialize(numframes)
       @numframes = numframes
       @duration = numframes

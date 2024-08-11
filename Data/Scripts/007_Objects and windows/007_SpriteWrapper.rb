@@ -463,7 +463,44 @@ end
 
 
 
-module Animation 
+module Animation
+  @@sprites_to_update = []
+  
+  def self.register_sprite s
+    @@sprites_to_update.append s
+  end
+
+  def self.unregister_sprite s
+    @@sprites_to_update.delete s
+  end
+
+  def self.wait_until_all_finished skip: false, skippable: false, w_dispose: false
+    while self.update_all_animations and (not skip or not skippable)
+      Graphics.update
+      Input.update
+      skip = Input.press?Input::C
+    end
+    Graphics.update
+    self.clean w_dispose: w_dispose
+    return skip
+  end
+  
+  def self.update_all_animations 
+    sprite_remaining = false
+    @@sprites_to_update.each do |s|
+      s.update
+      sprite_remaining |= (not s.finished)
+    end
+    return sprite_remaining
+  end
+
+  def self.clean w_dispose: false
+    @@sprites_to_update.each do |s|
+      s.clean w_dispose: w_dispose
+    end
+    @@sprites_to_update.clear
+  end
+
   # Animation curves describe how a proberty changes over time.
   # Its points describe the value of the property at a fixed point in time 
   # and the interpolation method dictates how the property behaves between these points.
@@ -492,7 +529,7 @@ module Animation
         runtime = runtime.clamp(0,@duration)
       end
       value = interpolation runtime
-      @is_finished = (not @looping and runtime >= @duration)
+      @is_finished = @looping || runtime >= @duration
       return value
     end
   end
@@ -509,10 +546,6 @@ module Animation
       end
       points = points.sort {|x,y| x[0] <=> y[0]}
       @points = points
-      # Loop and not seemless?
-      if looping and @points.length > 1 and [@points[0][1] != @points[-1][1]]
-        mirror
-      end
       super property_setter, @points[-1][0], looping: looping
     end
 
@@ -530,8 +563,9 @@ module Animation
         (1..mirrored_time_spans.length).each do |i|
           mirrored_time_stamps[i] = [mirrored_time_stamps[i-1][0]+mirrored_time_spans[i-1][0],mirrored_time_spans[i-1][2]]
         end
-         
+        
         @points = mirrored_time_stamps
+        @duration = @points[-1][0]
     end 
 
     def interpolation runtime
@@ -574,30 +608,16 @@ module Animation
     end
   end
 
- 
   class Animated_Sprite < Sprite
-    @@sprites_to_update = []
-    def self.update_animations
-      # Copy, animations/curves can remove their sprite from @@sprites_to_update when they finish and iterating over an array while deleting elements can get funky
-      animations = @@sprites_to_update
-      animations.each {|a| a.update}
-      return (not @@sprites_to_update.empty?)
-    end
+    attr_reader :finished
 
-    def self.wait_until_all_finished skip: false, skippable: false, dispose: false
-      sprites_to_update = @@sprites_to_update.map {|x| x}
-      while self.update_animations and (not skip or not skippable)
-        Graphics.update
-        Input.update
-        skip = Input.press?Input::C
-      end
-      Graphics.update
-      if dispose
-        sprites_to_update.each {|sprite| sprite.dispose}
-      end
-      return skip
+    def initialize *args
+     @curves = []
+     @start_time = Graphics.time
+     @finished = true
+     super(*args)
     end
-    
+        
     def create_curve property_setter, *points, looping: false
       curve = Linear_Animation.new property_setter, *points, looping: looping 
       add_curve curve
@@ -606,35 +626,25 @@ module Animation
     def add_curve curve 
       if @curves.length == 0
         @start_time = Graphics.time
-        @@sprites_to_update.append self
+        Animation.register_sprite self
       end
+      @finished = false
       @curves.append curve
       self.visible = true
     end
-
-    def initialize *args
-     @curves = []
-     @start_time = Graphics.time
-     super(*args)
-    end
-
+ 
     def runtime
       return Graphics.time - @start_time
     end
     
     def update
-      finished_curves = []
+      finished = true
       @curves.each do |c| 
         value = c.apply (runtime)
         call_setter c.property_setter, value
-        finished_curves.append c if c.is_finished
+        finished = finished && c.is_finished
       end
-      finished_curves.each {|c| @curves.delete c}
-      
-      if not finished_curves.empty? and @curves.empty?
-        # A curve finished and none is left. No need to update, untill a new curve is added
-        @@sprites_to_update.delete self 
-      end  
+      @finished = finished 
       super
     end
 
@@ -647,8 +657,13 @@ module Animation
     end
 
     def dispose
-      @@sprites_to_update.delete self
+      Animation.unregister_sprite self
       super
+    end
+
+    def clean w_dispose: false
+      @curves.clear
+      dispose if w_dispose
     end
 
     private
@@ -663,5 +678,5 @@ module Animation
         setter.call self, value
       end
     end
-  end
+  end 
 end

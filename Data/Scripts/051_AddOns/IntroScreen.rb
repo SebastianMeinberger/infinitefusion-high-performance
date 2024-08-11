@@ -105,7 +105,7 @@ class GenOneStyle
   def intro 
     Graphics.update
     skip = false
-    wait_all = ->() {skip = Animation::Animated_Sprite.wait_until_all_finished skip: skip}
+    wait_all = ->() {skip = Animation.wait_until_all_finished skip: skip, skippable: true}
     
     # Turn the opacity of the two unfused pokemon slowly up. 
     curve = Animation::Linear_Animation.new :opacity=, 
