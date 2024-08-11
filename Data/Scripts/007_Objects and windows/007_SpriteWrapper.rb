@@ -474,9 +474,8 @@ module Animation
     attr_accessor :property_setter
     attr_reader :is_finished
 
-    def initialize property_setter, duration, *interpolation_data, looping: false
+    def initialize property_setter, duration, looping: false
       @property_setter = property_setter
-      @interpolation_data = interpolation_data
       @looping = looping
       @is_finished = false
       @duration = duration
@@ -505,40 +504,41 @@ module Animation
     def initialize property_setter, *points, looping: false
       @next_index = 0
       points = points.sort {|x,y| x[0] <=> y[0]}
-      super property_setter, points[-1][0], *points, looping: looping
-      # Loop and not seemless? 
-      if @looping and points.length > 1 and [points[0][1] != points[-1][1]]
+      @points = points
+      # Loop and not seemless?
+      if looping and @points.length > 1 and [@points[0][1] != @points[-1][1]]
         mirror
       end
+      super property_setter, @points[-1][0], looping: looping
     end
 
     def mirror
       # Mirror the points to create a seemless loop 
         # Convert to time spans before reversing
-        relative_time_spans = (0..(@interpolation_data.length-2)).map do |i|
-          [@interpolation_data[i+1][0]-@interpolation_data[i][0],@interpolation_data[i][1],@interpolation_data[i+1][1]]
+        relative_time_spans = (0..(@points.length-2)).map do |i|
+          [@points[i+1][0]-@points[i][0],@points[i][1],@points[i+1][1]]
         end
         mirrored_time_spans = relative_time_spans + relative_time_spans.reverse.map {|p| [p[0],p[2],p[1]]}
         mirrored_time_stamps=[]
         
         # Convert back to absolute time stamps
-        mirrored_time_stamps[0] = [0, @interpolation_data[0][1]]
+        mirrored_time_stamps[0] = [0, @points[0][1]]
         (1..mirrored_time_spans.length).each do |i|
           mirrored_time_stamps[i] = [mirrored_time_stamps[i-1][0]+mirrored_time_spans[i-1][0],mirrored_time_spans[i-1][2]]
         end
          
-        @interpolation_data = mirrored_time_stamps
+        @points = mirrored_time_stamps
     end 
 
     def interpolation runtime
       p_1 = [nil,nil]
       p_2 = [nil,nil]
-      mod_or_clamp = -> (x) {@looping ? (@next_index + x) % interpolation_data : (@next_index + x).clamp(0,@interpolation_data.length-1)}
+      mod_or_clamp = -> (x) {@looping ? (@next_index + x) % @points.length : (@next_index + x).clamp(0,@points.length-1)}
       previous_index = mod_or_clamp.call(-1)
-      @interpolation_data.length.times do |i| 
-        if runtime <= @interpolation_data[@next_index][0] and (@next_index==0 or runtime >= @interpolation_data[previous_index][0])
-          p_1 = @interpolation_data[@next_index] 
-          p_2 = @interpolation_data[previous_index]
+      @points.length.times do |i| 
+        if runtime <= @points[@next_index][0] and (@next_index==0 or runtime >= @points[previous_index][0])
+          p_1 = @points[@next_index] 
+          p_2 = @points[previous_index]
           break
         end
         @next_index = mod_or_clamp.call 1
@@ -554,7 +554,7 @@ module Animation
       return m*runtime + b
     end      
   end
-
+ 
   class Animated_Sprite < Sprite
     @@sprites_to_update = []
     def self.update_animations
