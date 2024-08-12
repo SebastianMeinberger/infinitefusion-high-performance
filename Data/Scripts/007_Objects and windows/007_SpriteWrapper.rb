@@ -607,6 +607,22 @@ module Animation
       return @amplitude * Math.sin(runtime * @wave_length + @phase) + @offset
     end
   end
+  
+  # Uses a function of the form f(x) = a*x^2+b.
+  # Therefore, only two points must be specified
+  class Quadratic_Simple_Animation < Animation_Curve
+    def initialize property_setter, point1, point2, looping: false
+      x1, y1 = point1
+      x2, y2 = point2
+      @a = (y2 - y1) / (x2**2 - x1**2)
+      @b = y1 - @a*x1**2
+      super property_setter, x2, looping: looping
+    end
+
+    def interpolation runtime
+      return @a*runtime**2+@b
+    end
+  end
 
   class Animated_Sprite < Sprite
     attr_reader :finished
