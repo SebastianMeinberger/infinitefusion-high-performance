@@ -564,26 +564,36 @@ module Transitions
   #=============================================================================
   # HGSS wild outdoor
   #=============================================================================
+  @@black_bitmap = Bitmap.new Graphics.width, Graphics.height
+  @@black_bitmap.fill_rect 0, 0, Graphics.width, Graphics.height, Color.new(0,0,0)
+  def self.gen_black_square x: Graphics.width, y: Graphics.height, center: true
+    sprite = Animation::Animated_Sprite.new
+    sprite.bitmap = @@black_bitmap
+    sprite.src_rect = Rect.new 0, 0, x, y
+    if center
+      sprite.change_origin PictureOrigin::Center
+      sprite.x, sprite.y = x/2, y/2
+    end 
+    return sprite
+  end
+
   class Square_Transition
   require 'matrix'
     def self.play transition_duration, zoom_duration, squares, property, cx: 8, cy: 6
-      square = Bitmap.new Graphics.width/cx, Graphics.height/cy 
-      square.fill_rect 0, 0, square.width, square.height, Color.new(0,0,0)
-      x_pos = square.width/2
+      w, h = Graphics.width/cx, Graphics.height/cy 
+      x_pos = w/2
       squares.each do |col|
-        y_pos = square.height/2
+        y_pos = h/2
         col.each do |start_time|
           if not start_time.nil?
-            sprite = Animation::Animated_Sprite.new
-            sprite.bitmap = square
-            sprite.change_origin PictureOrigin::Center
-            sprite.x = x_pos
-            sprite.y = y_pos
-            sprite.create_curve property, [start_time,0], [start_time+zoom_duration,1]
+            square = Transitions.gen_black_square x: w, y: h
+            square.x = x_pos
+            square.y = y_pos
+            square.create_curve property, [start_time,0], [start_time+zoom_duration,1]
           end
-          y_pos += square.height
+          y_pos += h
         end
-        x_pos += square.width
+        x_pos += w
       end
       Animation.wait_until_all_finished w_dispose: true
     end
@@ -666,10 +676,7 @@ module Transitions
       splash.bitmap = RPG::Cache.transition("water_2")
       splash.create_curve :y=, [0, Graphics.height], [duration/2, Graphics.height], [duration, -Graphics.height]
       
-      bitmap = Bitmap.new Graphics.width, Graphics.height
-      bitmap.fill_rect 0, 0, Graphics.width, Graphics.height, Color.new(0,0,0)
-      black_half = Animation::Animated_Sprite.new
-      black_half.bitmap = bitmap
+      black_half = Transitions.gen_black_square center: false 
       pos = Graphics.height+0.95*splash.bitmap.height
       black_half.create_curve :y=, [0, pos], [duration/2, pos], [duration, 0]
 
@@ -685,120 +692,35 @@ module Transitions
       screen = Animation::Animated_Sprite.new
       screen.bitmap = Graphics.snap_to_bitmap
       # Two balls, one spinning in from left, one from right
-      ball_bitmap = RPG::Cache.transition "ball_small"
-      ball = []
       2.times do |i|
-        ball[i] = Animation::Animated_Sprite.new
-        ball[i].bitmap = ball_bitmap
-        ball[i].change_origin PictureOrigin::Center
-        ball[i].y = (Graphics.height + (i*2-1)*ball_bitmap.height)/2
-        ball[i].create_curve :angle=, [0.25, 360], looping: true
+        b = Animation::Animated_Sprite.new
+        b.bitmap = RPG::Cache.transition "ball_small"
+        b.change_origin PictureOrigin::Center
+        mult = i*2-1
+        b.y = (Graphics.height - mult*b.bitmap.height)/2
+        b.create_curve :angle=, [0.25, mult*360], looping: true
+        offset =  mult*(Graphics.width + b.bitmap.width)/2
+        b.create_curve :x=, [0, Graphics.width/2 + offset], [duration*0.6, Graphics.width/2 - offset]
       end
-      l = -ball_bitmap.width/2
-      r = Graphics.width + ball_bitmap.width/2
-      ball[0].create_curve :x=, [0,l], [duration*0.6,r]
-      ball[1].create_curve :x=, [0,r], [duration*0.6,l]
       Animation.wait_until_all_finished
-
-      #screen.create_curve ->(o,v) {o.x_zoom=v;o.y_zoom=v}, []
-    end
-  end
-
-  class TwoBallPassO
-    def initialize(numframes)
-      @numframes = numframes
-      @duration = numframes
-      @disposed = false
-      if @numframes<=0
-        @disposed = true
-        return
+      middle = [Graphics.width/2,Graphics.height/2]
+      # Zoom onto player
+      screen.change_origin PictureOrigin::Center
+      screen.x, screen.y = middle 
+      screen.create_curve ->(o,v) {o.zoom_x=v;o.zoom_y=v}, [0,1], [duration*0.4,2]
+      # Apature effect
+      black_middle = Transitions.gen_black_square
+      black_middle.add_curve(Animation::Quadratic_Simple_Animation.new :zoom_y=, [0,0], [duration*0.6,1])
+      2.times do |i|
+        mult = i*2-1
+        black_lr = Transitions.gen_black_square
+        black_lr.y = Graphics.height/2 - mult*Graphics.height/2
+        black_lr.create_curve :x=, [0,Graphics.width/2 + mult*Graphics.width], [duration*0.6, Graphics.width/2]
       end
-      @blackbitmap = RPG::Cache.transition("black_half")
-      @ballbitmap  = RPG::Cache.transition("ball_small")
-      @buffer = Graphics.snap_to_bitmap
-      if !@blackbitmap || !@ballbitmap || !@buffer
-        @disposed = true
-        return
-      end
-      @width  = @buffer.width
-      @height = @buffer.height
-      @viewport = Viewport.new(0,0,@width,@height)
-      @viewport.z = 99999
-      @bgsprite = Sprite.new(@viewport)
-      @bgsprite.x = @width/2
-      @bgsprite.y = @height/2
-      @bgsprite.ox = @width/2
-      @bgsprite.oy = @height/2
-      @bgsprite.bitmap = @buffer
-      @blacksprites = []
-      @ballsprites = []
-      for i in 0...2
-        @blacksprites[i] = Sprite.new(@viewport)
-        @blacksprites[i].x = (1-i*2)*@width
-        @blacksprites[i].y = i*@height/2
-        @blacksprites[i].z = 1
-        @blacksprites[i].bitmap = @blackbitmap
-        @ballsprites[i] = Sprite.new(@viewport)
-        @ballsprites[i].x = (1-i)*@width + (1-i*2)*@ballbitmap.width/2
-        @ballsprites[i].y = @height/2 + (i*2-1)*@ballbitmap.height/2
-        @ballsprites[i].z = 2
-        @ballsprites[i].ox = @ballbitmap.width/2
-        @ballsprites[i].oy = @ballbitmap.height/2
-        @ballsprites[i].bitmap = @ballbitmap
-      end
-      @blacksprites[2] = Sprite.new(@viewport)
-      @blacksprites[2].y = @height/2
-      @blacksprites[2].z = 1
-      @blacksprites[2].oy = @height/4
-      @blacksprites[2].zoom_y = 0.0
-      @blacksprites[2].bitmap = @blackbitmap
-      @addxmult = 2.0*@width/((@numframes*0.6)**2)
-      @addzoom  = 0.02*50/@numframes
+
+      Animation.wait_until_all_finished
     end
-
-    def disposed?; @disposed; end
-
-    def dispose
-      return if disposed?
-      @buffer.dispose if @buffer
-      @buffer = nil
-      @blackbitmap.dispose if @blackbitmap
-      @blackbitmap = nil
-      @ballbitmap.dispose if @ballbitmap
-      @ballbitmap = nil
-      @bgsprite.dispose if @bgsprite
-      for i in @blacksprites; i.dispose if i; end
-      @blacksprites.clear
-      for i in @ballsprites; i.dispose if i; end
-      @ballsprites.clear
-      @viewport.dispose if @viewport
-      @disposed = true
-    end
-
-    def update
-      return if disposed?
-      if @duration==0
-        dispose
-      elsif @duration>=@numframes*0.6
-        for i in 0...2
-          @ballsprites[i].x += (2*i-1)*((@width+@ballbitmap.width)/(0.4*@numframes))
-          @ballsprites[i].angle += (2*i-1)*(360.0/(0.2*@numframes))
-        end
-      else
-        addx = (@numframes*0.6-@duration)*@addxmult
-        for i in 0...2
-          @bgsprite.zoom_x += @addzoom
-          @bgsprite.zoom_y += @addzoom
-          @blacksprites[i].x += (2*i-1)*addx
-        end
-        @blacksprites[2].zoom_y += 2*addx/@width
-        @blacksprites[0].x = 0 if @blacksprites[0].x<0
-        @blacksprites[1].x = 0 if @blacksprites[1].x>0
-      end
-      @duration -= 1
-    end
-  end
-
+  end 
   #=============================================================================
   # HGSS trainer outdoor night
   #=============================================================================
