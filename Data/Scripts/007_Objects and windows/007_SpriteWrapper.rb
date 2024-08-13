@@ -508,14 +508,16 @@ module Animation
   # If other values are needed, they can simply be overwritten
   class Animation_Curve
     
-    attr_accessor :property_setter
+    attr_accessor :property
     attr_reader :is_finished
+    attr_reader :relative
 
-    def initialize property_setter, duration, looping: false
-      @property_setter = property_setter
+    def initialize property, duration, looping: false, relative: false
+      @property = property
       @looping = looping
       @is_finished = false
       @duration = duration
+      @relative = relative
     end
 
     def interpolation runtime
@@ -538,7 +540,7 @@ module Animation
   
   class Linear_Animation < Animation_Curve
      
-    def initialize property_setter, *points, looping: false
+    def initialize property_setter, *points, looping: false, relative: false
       @next_index = 0
       if points[0][0] != 0
         # If not explicitly set, start animation from value 0
@@ -546,7 +548,7 @@ module Animation
       end
       points = points.sort {|x,y| x[0] <=> y[0]}
       @points = points
-      super property_setter, @points[-1][0], looping: looping
+      super property_setter, @points[-1][0], looping: looping, relative: relative
     end
 
     def mirror
@@ -595,12 +597,12 @@ module Animation
 
   class Sin_Animation < Animation_Curve   
 
-    def initialize property_setter, duration, amplitude: 1, phase: 0, offset: 0, wave_length: 1, looping: false
+    def initialize property_setter, duration, amplitude: 1, phase: 0, offset: 0, wave_length: 1, looping: false, relative: false
       @amplitude = amplitude
       @phase = phase
       @offset = offset
       @wave_length = wave_length
-      super property_setter, duration, looping: looping
+      super property_setter, duration, looping: looping, relative: relative
     end
 
     def interpolation runtime
@@ -611,12 +613,12 @@ module Animation
   # Uses a function of the form f(x) = a*x^2+b.
   # Therefore, only two points must be specified
   class Quadratic_Simple_Animation < Animation_Curve
-    def initialize property_setter, point1, point2, looping: false
+    def initialize property_setter, point1, point2, looping: false, relative: false
       x1, y1 = point1
       x2, y2 = point2
       @a = (y2 - y1) / (x2**2 - x1**2)
       @b = y1 - @a*x1**2
-      super property_setter, x2, looping: looping
+      super property_setter, x2, looping: looping, relative: relative
     end
 
     def interpolation runtime
@@ -631,6 +633,10 @@ module Animation
      @curves = []
      @start_time = Graphics.time
      @finished = true
+     # Used for curves modifing a property relativly.
+     # Always the last value before we modified it is saved, so we can determine if it was modified by something else
+     @last_property_value = {}
+     @last_property_set = {}
      super(*args)
     end
         
@@ -643,6 +649,11 @@ module Animation
       if @curves.length == 0
         @start_time = Graphics.time
         Animation.register_sprite self
+      end
+      if curve.relative
+        current_value = call_getter curve.property
+        @last_property_value[curve] = current_value
+        @last_property_set[curve] = current_value
       end
       @finished = false
       @curves.append curve
@@ -657,7 +668,16 @@ module Animation
       finished = true
       @curves.each do |c| 
         value = c.apply (runtime)
-        call_setter c.property_setter, value
+        if c.relative
+          current_value = call_getter c.property
+          extern_change = current_value - @last_property_set[c]
+          value += @last_property_value[c] + extern_change
+          @last_property_value[c] += extern_change
+          call_setter c.property, value
+          @last_property_set[c] = call_getter c.property
+        else
+          call_setter c.property, value
+        end
         finished = finished && c.is_finished
       end
       @finished = finished 
@@ -684,15 +704,21 @@ module Animation
 
     private
 
-    def call_setter setter, value
+    def call_setter property, value
       # Unpack the property_setter.
       # If it is a symbol, it needs to be resolved
-      if setter.is_a? Symbol
-        method(setter).call value
+      if property.is_a? Symbol
+        method((property.to_s + "=").to_sym).call value
       # If it is a method/proc, it needs a reference to this sprite
       else 
-        setter.call self, value
+        property.call self, value
       end
     end
+
+    def call_getter property
+      value = method(property).call
+      return value
+    end
+
   end 
 end

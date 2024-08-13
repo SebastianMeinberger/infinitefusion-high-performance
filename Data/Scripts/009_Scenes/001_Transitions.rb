@@ -621,7 +621,7 @@ module Transitions
 
       snake_pattern.call 0, 0, 1, 1
       snake_pattern.call cx-1, cy-1, -1, -1
-      super duration, zoom_duration, squares, :zoom_x=
+      super duration, zoom_duration, squares, :zoom_x
     end
   end
  
@@ -664,21 +664,21 @@ module Transitions
       screen = Animation::Animated_Sprite.new
       screen.bitmap = Graphics.snap_to_bitmap
       screen.wave_length = 74
-      screen.create_curve :wave_phase=, [duration, 3600]
-      screen.create_curve :wave_amp=, [0.1,6]
+      screen.create_curve :wave_phase, [duration, 3600]
+      screen.create_curve :wave_amp, [0.1,6]
       
       sprite = Animation::Animated_Sprite.new
       sprite.bitmap = RPG::Cache.transition("water_1")
-      sprite.create_curve :y=, [0,Graphics.height], [duration,-Graphics.height]
-      sprite.add_curve(Animation::Sin_Animation.new :x=, duration, amplitude: 32, wave_length: 2*Math::PI)
+      sprite.create_curve :y, [0,Graphics.height], [duration,-Graphics.height]
+      sprite.add_curve(Animation::Sin_Animation.new :x, duration, amplitude: 32, wave_length: 2*Math::PI)
 
       splash = Animation::Animated_Sprite.new
       splash.bitmap = RPG::Cache.transition("water_2")
-      splash.create_curve :y=, [0, Graphics.height], [duration/2, Graphics.height], [duration, -Graphics.height]
+      splash.create_curve :y, [0, Graphics.height], [duration/2, Graphics.height], [duration, -Graphics.height]
       
       black_half = Transitions.gen_black_square center: false 
       pos = Graphics.height+0.95*splash.bitmap.height
-      black_half.create_curve :y=, [0, pos], [duration/2, pos], [duration, 0]
+      black_half.create_curve :y, [0, pos], [duration/2, pos], [duration, 0]
 
       Animation.wait_until_all_finished w_dispose: true
     end
@@ -698,9 +698,9 @@ module Transitions
         b.change_origin PictureOrigin::Center
         mult = i*2-1
         b.y = (Graphics.height - mult*b.bitmap.height)/2
-        b.create_curve :angle=, [0.25, mult*360], looping: true
+        b.create_curve :angle, [0.25, mult*360], looping: true
         offset =  mult*(Graphics.width + b.bitmap.width)/2
-        b.create_curve :x=, [0, Graphics.width/2 + offset], [duration*0.6, Graphics.width/2 - offset]
+        b.create_curve :x, [0, Graphics.width/2 + offset], [duration*0.6, Graphics.width/2 - offset]
       end
       Animation.wait_until_all_finished
       middle = [Graphics.width/2,Graphics.height/2]
@@ -710,12 +710,12 @@ module Transitions
       screen.create_curve ->(o,v) {o.zoom_x=v;o.zoom_y=v}, [0,1], [duration*0.4,2]
       # Apature effect
       black_middle = Transitions.gen_black_square
-      black_middle.add_curve(Animation::Quadratic_Simple_Animation.new :zoom_y=, [0,0], [duration*0.6,1])
+      black_middle.add_curve(Animation::Quadratic_Simple_Animation.new :zoom_y, [0,0], [duration*0.6,1])
       2.times do |i|
         mult = i*2-1
         black_lr = Transitions.gen_black_square
         black_lr.y = Graphics.height/2 - mult*Graphics.height/2
-        black_lr.create_curve :x=, [0,Graphics.width/2 + mult*Graphics.width], [duration*0.6, Graphics.width/2]
+        black_lr.create_curve :x, [0,Graphics.width/2 + mult*Graphics.width], [duration*0.6, Graphics.width/2]
       end
 
       Animation.wait_until_all_finished

@@ -30,7 +30,7 @@ class Scene_Intro
  
   def main
     Graphics.transition(0)
-    playIntroCinematic
+    #playIntroCinematic
     # Selects title screen style
     @screen = GenOneStyle.new
     # Plays the title screen intro (is skippable)
@@ -108,7 +108,7 @@ class GenOneStyle
     wait_all = ->() {skip = Animation.wait_until_all_finished skip: skip, skippable: true}
     
     # Turn the opacity of the two unfused pokemon slowly up. 
-    curve = Animation::Linear_Animation.new :opacity=, 
+    curve = Animation::Linear_Animation.new :opacity, 
       [1.6,255]
     @sprites[:poke].add_curve curve
     @sprites[:poke2].add_curve curve 
@@ -117,14 +117,14 @@ class GenOneStyle
     wait_all.call
 
     # Background image slides in from left screen border
-    @sprites[:bg].create_curve :x=,
+    @sprites[:bg].create_curve :x,
         [0,-Graphics.width],
         [0.2,0]
 
     wait_all.call
 
     # Bars slide in from the right screen border
-    @sprites[:bars].create_curve :x=,
+    @sprites[:bars].create_curve :x,
       [0,Graphics.width],
       [0.2,0]
 
@@ -147,11 +147,11 @@ class GenOneStyle
       p1_x = @sprites[:poke].x
       p2_x = @sprites[:poke2].x
       dir_vec = (p2_x - p1_x)
-      @sprites[:poke].create_curve :x=,
+      @sprites[:poke].create_curve :x,
         [0,p1_x],
         [6, p1_x + dir_vec/3.0], # 6 seconds for the first 2/3
         [7.5, p1_x + dir_vec/2.0] # double speed => 1.5 seconds for last 1/3
-      @sprites[:poke2].create_curve :x=,
+      @sprites[:poke2].create_curve :x,
         [0,p2_x],
         [6,p2_x - dir_vec/3.0],
         [7.5,p2_x - dir_vec/2.0]

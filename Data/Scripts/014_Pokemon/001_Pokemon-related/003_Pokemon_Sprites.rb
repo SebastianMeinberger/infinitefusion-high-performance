@@ -117,11 +117,7 @@ class PokemonIconSprite < Animation::Animated_Sprite
     @selected = false
     @active = false
     self.pokemon = pokemon
-    @offset_x = 0
-    @offset_y = 0
-    @base_x = 0
-    @base_y = 0
-
+    
     # Jump up and down animation
     end_time = 0.25
     if @pokemon.hp <= @pokemon.totalhp / 4;
@@ -129,35 +125,12 @@ class PokemonIconSprite < Animation::Animated_Sprite
     elsif @pokemon.hp <= @pokemon.totalhp / 2;
       end_time =  0.5 # Yellow HP - 0.5 seconds
     end
-    end_time *= 0.5
-    self.create_curve :offset_y=, [0, -8], [end_time,0], looping: true
+    end_time *= 0.5 
+    curve = Animation::Linear_Animation.new :y , [0, -8], [end_time,0], looping: true, relative: true
+    curve.mirror 
+    self.add_curve curve
   end
-
-  def offset_x= value
-    @offset_x = value
-    update_position
-  end
-
-  def offset_y= value
-    @offset_y = value
-    update_position
-  end
-
-  def base_x= value
-    @base_x = value
-    update_position
-  end
-
-  def base_y= value
-    @base_y = value
-    update_position
-  end
-
-  def update_position
-    self.x = @base_x + @offset_x
-    self.y = @base_y + @offset_y
-  end
-
+ 
   def dispose
     @animBitmap.dispose if @animBitmap
     super
