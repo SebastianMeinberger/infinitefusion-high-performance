@@ -21,6 +21,8 @@ Project Status: not yet usable
 | | Better Tile Caching | 1 |
 | | Better Usage of mkxp-z Atlas | ? |
 | | Ruby JIT | ? |
+| | Alternately: Different Ruby Backend (artichoke?) | ? |
 | Reduce Loading Times | | 1 |
 | | On demand script loading | 2 |
 | | Look ahead caching | 1 |
+| | Serialize Animations | ? |
