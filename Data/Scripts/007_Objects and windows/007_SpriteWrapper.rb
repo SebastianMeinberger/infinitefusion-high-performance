@@ -464,261 +464,431 @@ end
 
 
 module Animation
-  @@sprites_to_update = []
-  
-  def self.register_sprite s
-    @@sprites_to_update.append s
-  end
+  class Animation
+    attr_reader :duration
+    attr_reader :loop_duration
+    attr_reader :repeats
+    attr_reader :start_time
+    attr_reader :started
+    attr_reader :name # Only for easing debugging
+    attr_accessor :finished
 
-  def self.unregister_sprite s
-    @@sprites_to_update.delete s
-  end
-
-  def self.wait_until_all_finished skip: false, skippable: false, w_dispose: false
-    while self.update_all_animations and (not skip or not skippable)
-      Graphics.update
-      Input.update
-      skip = Input.press?Input::C
-    end
-    Graphics.update
-    self.clean w_dispose: w_dispose
-    return skip
-  end
-  
-  def self.update_all_animations 
-    sprite_remaining = false
-    @@sprites_to_update.each do |s|
-      s.update
-      sprite_remaining |= (not s.finished)
-    end
-    return sprite_remaining
-  end
-
-  def self.clean w_dispose: false
-    @@sprites_to_update.each do |s|
-      s.clean w_dispose: w_dispose
-    end
-    @@sprites_to_update.clear
-  end
-
-  # Animation curves describe how a proberty changes over time.
-  # Its points describe the value of the property at a fixed point in time 
-  # and the interpolation method dictates how the property behaves between these points.
-  # There are two implicite points, the first at (0,0) and the second at (duration,0)
-  # If other values are needed, they can simply be overwritten
-  class Animation_Curve
-    
-    attr_accessor :property
-    attr_reader :is_finished
-    attr_reader :relative
-
-    def initialize property, duration, looping: false, relative: false
-      @property = property
-      @looping = looping
-      @is_finished = false
-      @duration = duration
-      @relative = relative
-    end
-
-    def interpolation runtime
-      return 0
-    end
-
-    def apply runtime
-      if @looping
-        runtime = runtime % @duration 
+    def initialize repeats=1, name: "".freeze
+      if repeats > 0
+        @repeats = repeats
       else
-        runtime = runtime.clamp(0,@duration)
+        @repeats = Float::INFINITY
       end
-      value = interpolation runtime
-      @is_finished = @looping || runtime >= @duration
-      return value
-    end
-  end
-
-
-  
-  class Linear_Animation < Animation_Curve
-     
-    def initialize property_setter, *points, looping: false, relative: false
-      @next_index = 0
-      if points[0][0] != 0
-        # If not explicitly set, start animation from value 0
-        points.prepend [0,0]
-      end
-      points = points.sort {|x,y| x[0] <=> y[0]}
-      @points = points
-      super property_setter, @points[-1][0], looping: looping, relative: relative
-    end
-
-    def mirror
-      # Mirror the points to create a seemless loop 
-        # Convert to time spans before reversing
-        relative_time_spans = (0..(@points.length-2)).map do |i|
-          [@points[i+1][0]-@points[i][0],@points[i][1],@points[i+1][1]]
-        end
-        mirrored_time_spans = relative_time_spans + relative_time_spans.reverse.map {|p| [p[0],p[2],p[1]]}
-        mirrored_time_stamps=[]
-        
-        # Convert back to absolute time stamps
-        mirrored_time_stamps[0] = [0, @points[0][1]]
-        (1..mirrored_time_spans.length).each do |i|
-          mirrored_time_stamps[i] = [mirrored_time_stamps[i-1][0]+mirrored_time_spans[i-1][0],mirrored_time_spans[i-1][2]]
-        end
-        
-        @points = mirrored_time_stamps
-        @duration = @points[-1][0]
-    end 
-
-    def interpolation runtime
-      p_1 = [nil,nil]
-      p_2 = [nil,nil]
-      mod_or_clamp = -> (x) {@looping ? (@next_index + x) % @points.length : (@next_index + x).clamp(0,@points.length-1)}
-      previous_index = mod_or_clamp.call(-1)
-      @points.length.times do |i| 
-        if runtime <= @points[@next_index][0] and (@next_index==0 or runtime >= @points[previous_index][0])
-          p_1 = @points[@next_index] 
-          p_2 = @points[previous_index]
-          break
-        end
-        @next_index = mod_or_clamp.call 1
-        previous_index = mod_or_clamp.call(-1)
-      end
-
-
-      if p_1[0] == p_2[0]
-        return p_2[1]
-      end
-      m = (p_2[1]-p_1[1])/(p_2[0]-p_1[0])
-      b = p_1[1]-m*p_1[0]
-      return m*runtime + b
-    end      
-  end
-
-  class Sin_Animation < Animation_Curve   
-
-    def initialize property_setter, duration, amplitude: 1, phase: 0, offset: 0, wave_length: 1, looping: false, relative: false
-      @amplitude = amplitude
-      @phase = phase
-      @offset = offset
-      @wave_length = wave_length
-      super property_setter, duration, looping: looping, relative: relative
-    end
-
-    def interpolation runtime
-      return @amplitude * Math.sin(runtime * @wave_length + @phase) + @offset
-    end
-  end
-  
-  # Uses a function of the form f(x) = a*x^2+b.
-  # Therefore, only two points must be specified
-  class Quadratic_Simple_Animation < Animation_Curve
-    def initialize property_setter, point1, point2, looping: false, relative: false
-      x1, y1 = point1
-      x2, y2 = point2
-      @a = (y2 - y1) / (x2**2 - x1**2)
-      @b = y1 - @a*x1**2
-      super property_setter, x2, looping: looping, relative: relative
-    end
-
-    def interpolation runtime
-      return @a*runtime**2+@b
-    end
-  end
-
-  class Animated_Sprite < Sprite
-    attr_reader :finished
-
-    def initialize *args
-     @curves = []
-     @start_time = Graphics.time
-     @finished = true
-     # Used for curves modifing a property relativly.
-     # Always the last value before we modified it is saved, so we can determine if it was modified by something else
-     @last_property_value = {}
-     @last_property_set = {}
-     super(*args)
-    end
-        
-    def create_curve property_setter, *points, looping: false
-      curve = Linear_Animation.new property_setter, *points, looping: looping 
-      add_curve curve
-    end
-
-    def add_curve curve 
-      if @curves.length == 0
-        @start_time = Graphics.time
-        Animation.register_sprite self
-      end
-      if curve.relative
-        current_value = call_getter curve.property
-        @last_property_value[curve] = current_value
-        @last_property_set[curve] = current_value
-      end
+      @name = name
       @finished = false
-      @curves.append curve
-      self.visible = true
+      @times_played = 0
     end
- 
-    def runtime
-      return Graphics.time - @start_time
+
+    def started time
+      return time >= @start_time
+    end
+
+    def mark_start time_stamp
+      return false if @start_time
+      @start_time = time_stamp
+      return true 
+    end
+
+    def update time: Graphics.time
+      return if @finished
+      mark_start time
+      n_time = normalize_time time
+      _update n_time
+      if not(running n_time) && finish_conditions
+        @finished = true
+        
+        if @times_played+1 < @repeats
+          @times_played += 1
+          on_loop
+        end
+      end
+      return not(@finished)
+    end
+
+    def to_s
+      return @name=="" ? super : "#{@name}( start: #{@start_time}, dur: #{@duration})" 
+    end
+
+    # Overwrite to reset everything that needs too on the beginning of a new loop
+    def on_loop
+      @finished = false
+    end
+
+
+    private
+
+    # Overwrite to implement actual animation
+    def _update n_time
     end
     
-    def update
-      finished = true
-      @curves.each do |c| 
-        value = c.apply (runtime)
-        if c.relative
-          current_value = call_getter c.property
-          extern_change = current_value - @last_property_set[c]
-          value += @last_property_value[c] + extern_change
-          @last_property_value[c] += extern_change
-          call_setter c.property, value
-          @last_property_set[c] = call_getter c.property
-        else
-          call_setter c.property, value
-        end
-        finished = finished && c.is_finished
+    # Overwrite to set additional conditions that need to be fullfilled, in order to set the @finished variable
+    def finish_conditions
+      return true
+    end
+    
+    # The difference between @finshed and running is that running only looks at the time and determines if the given timepoint lies in start to duration.
+    # @finished, on the other hand, is set when the animation was updated at least once, while running determined that it should no longer run.
+    # That's also the reson why running is private and finished isn't.
+    # All extern checks that want to determine if the animation should run or not must use (not) animation.finished, to ensure that the animation was executed at least once at the last time point. 
+    def running time
+      # Delta check because multilple floats get summed up for time
+      return time < @duration - 0.0001
+    end
+
+    def normalize_time time
+      # Otherwise infinte loops don't work. 0 * inf is NaN, not 0
+      if @duration.finite?
+        return time - @start_time - @duration * @times_played
+      else
+        return time - @start_time
       end
-      @finished = finished 
+    end
+  end
+
+  class Property < Animation 
+    def initialize setter, curve, getter: nil, repeats: 1
+      @setter = setter
+      @curve = curve
+      @getter = getter
+      @duration = curve.duration
+      @loop_duration = @duration * repeats
+      # If a getter for the porperty is given, it is animated relativly. 
+      if getter
+        # Used to disect the property p into p=last_value+extern_change+animation
+        current_value = getter.call
+        @last_property_value = current_value
+        @last_property_set = current_value
+      end
+      super repeats
+    end
+
+    def to_s
+      @name = @setter.source_location
       super
     end
 
-    def change_origin origin
-      case origin
-      when PictureOrigin::Center
-        self.ox = self.src_rect.width / 2
-        self.oy = self.src_rect.height / 2
+    private
+    
+    def _update n_time
+      n_time = n_time.clamp(0, @duration)
+      value = @curve.gen_value (n_time)
+      if @getter
+        current_value = @getter.call
+        extern_change = current_value - @last_property_set
+        value += @last_property_value + extern_change
+        @last_property_value += extern_change
+        @setter.call value
+        @last_property_set = @getter.call
+      else
+        @setter.call value
       end
+    end
+  end
+
+  class Container < Animation
+    attr_reader :animations
+
+    def initialize *animations, parallel: false, repeats: 1, name: "".freeze
+      super repeats, name: name
+      @animations = animations
+      @parallel = parallel
+      @last_animation = nil
+      if not parallel
+        @first_anim_to_play = 0 
+      end
+    end
+
+    def add *animations
+      if @started
+        # TODO only raise when debug is active, to avoid unnecesarry crashes
+        raise StandardError.new "Can't add animation. Playing has already started."
+      else
+        @animations += animations 
+      end
+    end
+
+    def play_and_finish  
+      Graphics.update
+      while update
+        Graphics.update
+        user_skips?
+      end
+      Graphics.update
+    end
+
+    def mark_start time
+      if !super || @animations.empty?
+        return false
+      end
+      @animations.each_with_index{|a,i| 
+        start = calc_start i
+        a.mark_start start
+      }
+      # Calculate our own duration
+      if @parallel
+        @last_animation = @animations.max {|a,b| a.loop_duration <=> b.loop_duration}
+      else
+        @last_animation = @animations[-1]
+      end
+      @duration = @last_animation.start_time + @last_animation.loop_duration
+      @loop_duration = @duration * @repeats
+    end
+
+    def to_s
+      info = super
+      info += "{\n"
+      @animations.each {|a| info += "[" + a.to_s + "]" }
+      info += "\n}"
     end
 
     def dispose
-      Animation.unregister_sprite self
+      @animations.each {|a| a.dispose}
+      @animations.clear
       super
-    end
-
-    def clean w_dispose: false
-      @curves.clear
-      dispose if w_dispose
     end
 
     private
 
-    def call_setter property, value
-      # Unpack the property_setter.
-      # If it is a symbol, it needs to be resolved
-      if property.is_a? Symbol
-        method((property.to_s + "=").to_sym).call value
-      # If it is a method/proc, it needs a reference to this sprite
-      else 
-        property.call self, value
+    def _update n_time
+      if @parallel
+        @animations.each {|a| a.update time: n_time}
+      else
+        # Find first anim that isn't finished
+        i = @first_anim_to_play
+        should_play = -> (i) {@animations[i].started n_time and not @animations[i].finished}
+        @animations.each do
+          if should_play.call i
+            break
+          else
+            i = (i + 1) % @animations.length
+          end
+        end
+        @first_anim_to_play = i 
+        # Update all animations that already started and that are after the first not finished one
+        @animations.each do 
+          if not should_play.call i
+            break
+          else
+            @animations[i].update time: n_time
+            i = (i + 1) % @animations.length
+          end
+        end 
       end
     end
 
-    def call_getter property
-      value = method(property).call
-      return value
+    def on_loop
+      super
+      @animations.each {|a| a.on_loop}
     end
 
-  end 
+    def finish_conditions
+      # Normally, all other animations should already be finished once the last animation did.
+      # But just to be sure, once the last finished, all others are also checked.
+      return @last_animation.finished && @animations.find{|a| not a.finished}.nil?
+    end
+
+    def calc_start i
+      if @parallel
+        return 0
+      else
+        if i == 0
+          return 0
+        else
+          prev_a = @animations[i-1]
+          return prev_a.start_time + prev_a.loop_duration
+        end
+      end
+    end
+
+    # While a container is supposed to have an easy and predictable controlflow, skipping animations is a common usecase, in example in the intro sequence or in textboxes.
+    def user_skips?
+      Input.update
+      skip = (skip_keys.map {|k| Input.press?k}).reduce false, :|
+      skip_reaction if skip
+    end
+
+    # This method can be overwritten to implement individual reactions for skipping.
+    # It is automatically called when the user presses a key defined in skip_keys while an animation plays,
+    def skip_reaction
+    end
+
+    def skip_keys
+      return [Input::C]
+    end
+  end
+
+  class PointBased < Container
+    def initialize setter, *points, interpolation: Value_Curves::Linear, repeats: 1
+      if not points[0].is_a? Array
+        animations = [Property.new(setter, Value_Curves::Constant.new(points[0]), repeats: repeats)] 
+      else
+        points.sort! {|p1,p2| p1[0] <=> p2[0]}
+        points.insert 0, [0,0] if points[0][0] != 0 
+        animations = []
+        points.each_cons(2)do |p1,p2|
+          x1,x2 = p1[0],p2[0]
+          y1,y2 = p1[1],p2[1]
+          # Normalize to startime 0
+          animations.append Property.new(setter, interpolation.new([0,y1],[x2-x1,y2]), repeats: repeats)
+        end
+      end
+      super(*animations, repeats: repeats)
+    end
+  end
+
+  module Value_Curves
+    # A curve, that generates a value for a given runtime.
+    # The runtime has to be normaized, i.e. at runtime 0 the corresponding animation starts.
+    class Curve
+      attr_reader :duration
+      
+      def initialize duration
+        @duration = duration
+      end
+
+      def gen_value runtime
+        return gen_value_implementation runtime.clamp(0,@duration)
+      end
+      
+      private
+      # Overwrite 
+      def gen_value_implementation
+      end
+    end
+
+    class Constant < Curve
+      def initialize value
+        @value = value
+        super 0
+      end
+
+      private
+      def gen_value_implementation runtime
+        return @value
+      end
+    end
+    
+    # A curve defined by two value pairs
+    # E.g., a linear function definde by start and end point
+    class Interpolation < Curve
+      def initialize point1, point2
+        @x1, @y1 = point1
+        @x2, @y2 = point2
+        super @x2
+      end
+    end
+    
+    # Uses a function of the form f(x) = a*x^2+b.
+    # Therefore, only two points must be specified
+    class Quadratic_Simple < Interpolation
+      def initialize *args
+        super
+        @a = (@y2 - @y1) / (@x2**2 - @x1**2)
+        @b = @y1 - @a*@x1**2
+      end
+
+      private
+      def gen_value_implementation runtime
+        return @a*runtime**2+@b
+      end
+    end
+
+    class Linear < Interpolation
+      def initialize *args
+        super
+        if @x1 != @x2
+          @m = (@y2-@y1)/(@x2-@x1)
+        else
+          @m = 1
+        end
+        @b = @y1-@m*@x1
+      end
+
+      private
+      def gen_value_implementation runtime
+        return @m*runtime + @b
+      end
+    end
+
+    class Sinus < Curve
+
+      def initialize duration, amplitude: 1, phase: 0, offset: 0, wave_length: 1
+        @amplitude = amplitude
+        @phase = phase
+        @offset = offset
+        @wave_length = wave_length
+        super property_setter, duration
+      end
+
+      def interpolation runtime, looping
+        return @amplitude * Math.sin(runtime * @wave_length + @phase) + @offset
+      end
+    end 
+  end
+
+  module Implementations
+    class Animated_Sprite < Sprite
+      
+      attr_reader :animations
+      
+      def initialize *args, parallel: false
+        @animations = Container.new parallel: parallel
+        super(*args)
+      end
+      
+      def animate_property property, *points, interpolation: Value_Curves::Linear, relativ: false, repeats: 1
+        setter = gen_setter property
+        getter = gen_getter property if relativ
+        return PointBased.new setter, *points, interpolation: interpolation, repeats: repeats
+      end
+
+      def update
+        @animations.update
+      end
+
+      def finished
+        return @animations.finished
+      end
+
+      def change_origin origin
+        case origin
+        when PictureOrigin::Center
+          self.ox = self.src_rect.width / 2
+          self.oy = self.src_rect.height / 2
+        end
+      end
+
+      private
+
+      def gen_setter property
+        case property
+        when :tone
+          setter = ->(c){self.tone = Tone.new c, c, c}
+        when :color
+          setter = ->(c){self.color = Color.new c, c, c}
+        else
+          setter = method (property.to_s + "=").to_sym
+        end
+        return setter
+      end
+
+      def gen_getter property
+        case property
+        when :Tone
+          getter = ->(){return self.Tone.red}
+        when :Color
+          getter = ->(){return self.Color.red}
+        else
+          getter = method property
+        end
+        return getter
+      end
+
+    end
+  end
 end

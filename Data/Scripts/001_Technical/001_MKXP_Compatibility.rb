@@ -1,4 +1,5 @@
 # Using mkxp-z v2.2.0 - https://gitlab.com/mkxp-z/mkxp-z/-/releases/v2.2.0
+require 'debug'
 $VERBOSE = nil
 Font.default_shadow = false if Font.respond_to?(:default_shadow)
 Graphics.frame_rate = 40
@@ -25,15 +26,20 @@ module Graphics
 
   class << self
     attr_accessor :time
+    attr_accessor :delta_end
+    attr_accessor :time_multiplier
   end
   self.time = 0
+  self.delta_end = 0
+  self.time_multiplier = 1
 
   class << Graphics
     alias mkxpz_update update
   end
 
   def self.update
-    self.time += self.delta
+    self.delta_end = self.time_multiplier * self.delta
+    self.time += self.delta_end
     mkxpz_update
     return delta
   end

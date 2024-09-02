@@ -34,7 +34,7 @@ class Scene_Intro
     # Selects title screen style
     @screen = GenOneStyle.new
     # Plays the title screen intro (is skippable)
-    @screen.intro
+    @screen.play_intro
     closeTitle
     Graphics.freeze
   end
@@ -58,6 +58,14 @@ end
 #===============================================================================
 # Styled to look like the FRLG games
 #===============================================================================
+
+class Intro_Anim_Container < Animation::Container
+  private
+  def skip_reaction
+    @finished = true
+  end
+end
+
 class GenOneStyle
   def initialize
     @sprites = {}
@@ -73,111 +81,108 @@ class GenOneStyle
     pbBGMPlay("Pokemon Red-Blue Opening")
     
     # Load Background stuff
-    load_sprites [:bg, "Graphics/Titles/gen1_bg"],
-      [:bars, "Graphics/Titles/gen1_bars"],
-      [:logo,"Graphics/Titles/pokelogo"]
+    load_sprites(
+      [:bg, "Graphics/Titles/gen1_bg", -Graphics.width, 0],
+      [:bars, "Graphics/Titles/gen1_btars", Graphics.width, 0],
+      [:logo,"Graphics/Titles/pokelogo", 50, -20]
+    )
+    @sprites[:logo].visible = false
     # Load two pokemon, that will fuse
     load_forground_pokemon
   end
   
   def load_sprites *sprites
-    sprites.each do |name_path| 
-      name, path = name_path
-      if not @sprites[name].nil?
-        @sprites[name].dispose
+    sprites.each do |sprite_data| 
+      name, path, x, y = sprite_data
+      if @sprites[name]
+        s = @sprites[name]
+      else
+        s = @sprites[name] = Animation::Implementations::Animated_Sprite.new @viewport
       end
-      @sprites[name] = Animation::Animated_Sprite.new(@viewport) 
-      @sprites[name].bitmap = pbBitmap path
-      @sprites[name].visible = false
+      s.x = x if x
+      s.y = y if y
+      s.bitmap = pbBitmap path
+      s.visible = true
     end
   end
 
   def load_forground_pokemon
     randPoke = getRandomCustomFusionForIntro(true, @customPokeList, @maxPoke)
-    load_sprites [:poke, (get_unfused_sprite_path randPoke[0])],
-      [:poke2, (get_unfused_sprite_path randPoke[1])],
-      [:fpoke, (getFusedPath randPoke[0], randPoke[1])]
-    @sprites[:poke].x = 400
-    @sprites[:poke2].x = -150
-    @sprites[:poke].y = @sprites[:poke2].y = 75 
+    load_sprites(
+      [:poke, (get_unfused_sprite_path randPoke[0]), 400, 75],
+      [:poke2, (get_unfused_sprite_path randPoke[1]), -150, 75],
+      [:fpoke, (getFusedPath randPoke[0], randPoke[1]), 125, 75]
+    )
+    @sprites[:fpoke].visible = false
+    [:poke, :poke2].map {|p|  #@sprites[p].opacity = 0
+                              @sprites[p].tone = Tone.new(0,0,0)}
   end
 
-  def intro 
-    Graphics.update
-    skip = false
-    wait_all = ->() {skip = Animation.wait_until_all_finished skip: skip, skippable: true}
+  def play_intro 
+    # The Intro_Anim_Container implements a skip reaction, that skips the entire Intro sequenc on pressing Input::C
+    final_animation = Intro_Anim_Container.new
+    poke, poke2, fpoke, bg, bars, logo = [:poke, :poke2, :fpoke, :bg, :bars, :logo].map {|s| @sprites[s]} 
     
-    # Turn the opacity of the two unfused pokemon slowly up. 
-    curve = Animation::Linear_Animation.new :opacity, 
-      [1.6,255]
-    @sprites[:poke].add_curve curve
-    @sprites[:poke2].add_curve curve 
-    
+    # Turn the opacity of the two unfused pokemon slowly up.
+    animation = Animation::Container.new parallel: true
+    animation.add(
+      *[poke,poke2].map{|p| p.animate_property :opacity, [1.6,255]}
+    )
+    final_animation.add animation
+    # Background slides in from left, bars slide in from right.
+    # Then, the logo appears and plays a shine effect.
+    animation = Animation::Container.new name: "BG Stuff"
+    animation.add(
+            #bars.animate_property(:x, [0, Graphics.width], [0.2,0]),
+      bg.animate_property(:x, [0, -Graphics.width],[0.2,0]),
+      logo.animate_property(:visible, true),
+      logo.animate_property(:tone, [0,255], [0.4,0]),
       
-    wait_all.call
+    )
+    final_animation.add animation
 
-    # Background image slides in from left screen border
-    @sprites[:bg].create_curve :x,
-        [0,-Graphics.width],
-        [0.2,0]
+    # Wrap the last animations into an additional container, that loops infinitly
+    animation_loop = Animation::Container.new repeats: Float::INFINITY, name: "Loop"
 
-    wait_all.call
+    # Both pokemon slide towards eachother
+    # 6 seconds for the first 2/3, the double speed => 1.5 seconds for last 1/3
+    movement = [[0,0], [6,(poke2.x-poke.x)/3], [7.5,(poke2.x-poke.x)/2]]
+    # The Pokemon start to shine, when accelerating for the last 1/3 of the way
+    shine = [[6,0], [7.5,255]]
+    animation = Animation::Container.new parallel: true
+    animation.add(
+      # Move
+      poke.animate_property(:x, *movement.map {|p| [p[0],poke.x + p[1]]}),
+      poke2.animate_property(:x, *movement.map {|p| [p[0],poke2.x - p[1]]}),
+      # Shine
+      *[poke,poke2].map {|p| p.animate_property :tone, *shine}
+    )
+    animation_loop.add animation
+     
+    # Reveal fusion
+    animation = Animation::Container.new parallel: true
+    animation.add(
+        *[poke,poke2].map {|p| p.animate_property :visible, false},
+        fpoke.animate_property(:visible, true),
+        fpoke.animate_property(:tone, [0,255], [0.2,0], [3,0])
+    )
+    animation_loop.add animation
 
-    # Bars slide in from the right screen border
-    @sprites[:bars].create_curve :x,
-      [0,Graphics.width],
-      [0.2,0]
+    # Reload pokemon, so loop begins with new ones 
+    animation = Animation::Container.new
+    animation.add(
+      Animation::Property.new(->(_){
+        load_forground_pokemon
+        # one graphics update with multipler 0, to prevent lag through the potentially long loading time of poke sprites
+        Graphics.time_multiplier = 0
+        Graphics.update
+        Graphics.time_multiplier = 1
+      }, Animation::Value_Curves::Constant.new(nil)),
+    )
+    animation_loop.add animation
+    final_animation.add animation_loop
 
-    wait_all.call
-       
-    # Logo appears and goes from purly white to its real colors
-    ->(l=@sprites[:logo]) {
-      l.x, l.y = 50, -20 
-      l.create_curve -> (o,v){o.tone = Tone.new v, v, v},
-      [0,255], # 255 on all color channels of tone => Sprite color is shifted to 100% white
-      [0.4,0] # all color channels empty => Sprite color remains unaltered
-    }.call
-
-    wait_all.call
-    
-    while not skip do
-      # If not updated, the sliding can lag, depending on how long the download of the sprites took
-      Graphics.update
-      # Both pokemon slide towards eachother
-      p1_x = @sprites[:poke].x
-      p2_x = @sprites[:poke2].x
-      dir_vec = (p2_x - p1_x)
-      @sprites[:poke].create_curve :x,
-        [0,p1_x],
-        [6, p1_x + dir_vec/3.0], # 6 seconds for the first 2/3
-        [7.5, p1_x + dir_vec/2.0] # double speed => 1.5 seconds for last 1/3
-      @sprites[:poke2].create_curve :x,
-        [0,p2_x],
-        [6,p2_x - dir_vec/3.0],
-        [7.5,p2_x - dir_vec/2.0]
-
-      # Shine when accalerating
-      curve = Animation::Linear_Animation.new -> (o,v) {o.tone = Tone.new v,v,v},
-        [6,0],
-        [7.5,255]
-      @sprites[:poke].add_curve curve
-      @sprites[:poke2].add_curve curve
-
-      wait_all.call
-
-      # Reveal fusion
-      @sprites[:poke].visible = @sprites[:poke2].visible = false  
-      @sprites[:fpoke].x, @sprites[:fpoke].y = 125, 75
-      @sprites[:fpoke].create_curve -> (o,v) {o.tone = Tone.new v,v,v},
-        [0,255],
-        [0.2,0],
-        [3,0]
-      
-      wait_all.call
-
-      # Reset
-      load_forground_pokemon
-    end
+    final_animation.play_and_finish
   end
 
   def getFusedPath(randpoke1, randpoke2)
@@ -190,15 +195,15 @@ class GenOneStyle
     return path
   end
 
+  def dispose
+    Kernel.pbClearText()
+    #pbFadeOutAndHide(@sprites)
+    @sprites.each_value {|s| s.dispose}
+    @viewport.dispose
+    @disposed = true
+  end
 end
 
-def dispose
-  Kernel.pbClearText()
-  pbFadeOutAndHide(@sprites)
-  pbDisposeSpriteHash(@sprites)
-  @viewport.dispose
-  @disposed = true
-end
 
 def disposed?
   return @disposed
