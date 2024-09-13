@@ -59,10 +59,14 @@ end
 # Styled to look like the FRLG games
 #===============================================================================
 
-class Intro_Anim_Container < Animation::Container
-  private
-  def skip_reaction
-    @finished = true
+class Intro_Animation < Animation::Sequential
+  def update *args
+    Input.update
+    if Input.press?(Input::C)
+      return false
+    else
+      return super
+    end
   end
 end
 
@@ -114,75 +118,56 @@ class GenOneStyle
       [:fpoke, (getFusedPath randPoke[0], randPoke[1]), 125, 75]
     )
     @sprites[:fpoke].visible = false
-    [:poke, :poke2].map {|p|  #@sprites[p].opacity = 0
+    [:poke, :poke2].map {|p|  @sprites[p].opacity = 0
                               @sprites[p].tone = Tone.new(0,0,0)}
   end
 
-  def play_intro 
+  def play_intro
+
     # The Intro_Anim_Container implements a skip reaction, that skips the entire Intro sequenc on pressing Input::C
-    final_animation = Intro_Anim_Container.new
-    poke, poke2, fpoke, bg, bars, logo = [:poke, :poke2, :fpoke, :bg, :bars, :logo].map {|s| @sprites[s]} 
+    poke, poke2, fpoke, bg, logo = [:poke, :poke2, :fpoke, :bg, :logo].map {|s| @sprites[s]}
+ 
+    movement = [[0,0], [6,(poke2.x-poke.x)/3], [7.5,(poke2.x-poke.x)/2]]
+    shine = [[6,0], [7.5,255]]
     
-    # Turn the opacity of the two unfused pokemon slowly up.
-    animation = Animation::Container.new parallel: true
-    animation.add(
-      *[poke,poke2].map{|p| p.animate_property :opacity, [1.6,255]}
-    )
-    final_animation.add animation
-    # Background slides in from left, bars slide in from right.
-    # Then, the logo appears and plays a shine effect.
-    animation = Animation::Container.new name: "BG Stuff"
-    animation.add(
-            #bars.animate_property(:x, [0, Graphics.width], [0.2,0]),
+    Intro_Animation.new(
+      # Turn the opacity of the two unfused pokemon slowly up.
+      Animation::Parralel.new(
+        poke.animate_property(:opacity, [1.6,255]),
+        poke2.animate_property(:opacity, [1.6,255])
+      ),
+      # Background slides in from left
       bg.animate_property(:x, [0, -Graphics.width],[0.2,0]),
+      # Logo appears and plays a shine effect
       logo.animate_property(:visible, true),
       logo.animate_property(:tone, [0,255], [0.4,0]),
-      
-    )
-    final_animation.add animation
-
-    # Wrap the last animations into an additional container, that loops infinitly
-    animation_loop = Animation::Container.new repeats: Float::INFINITY, name: "Loop"
-
-    # Both pokemon slide towards eachother
-    # 6 seconds for the first 2/3, the double speed => 1.5 seconds for last 1/3
-    movement = [[0,0], [6,(poke2.x-poke.x)/3], [7.5,(poke2.x-poke.x)/2]]
-    # The Pokemon start to shine, when accelerating for the last 1/3 of the way
-    shine = [[6,0], [7.5,255]]
-    animation = Animation::Container.new parallel: true
-    animation.add(
-      # Move
-      poke.animate_property(:x, *movement.map {|p| [p[0],poke.x + p[1]]}),
-      poke2.animate_property(:x, *movement.map {|p| [p[0],poke2.x - p[1]]}),
-      # Shine
-      *[poke,poke2].map {|p| p.animate_property :tone, *shine}
-    )
-    animation_loop.add animation
-     
-    # Reveal fusion
-    animation = Animation::Container.new parallel: true
-    animation.add(
+      # Wrap the last animations into an additional container, that loops infinitly
+      Animation::Sequential.new(
+        # Both pokemon slide towards eachother and accelearte and shine on the last 1/3
+        Animation::Parralel.new(
+          poke.animate_property(:x, *movement.map {|p| [p[0],poke.x + p[1]]}),
+          poke2.animate_property(:x, *movement.map {|p| [p[0],poke2.x - p[1]]}),
+          poke.animate_property(:tone, *shine),
+          poke2.animate_property(:tone, *shine)
+        ),
+        # Reveal fusion
         *[poke,poke2].map {|p| p.animate_property :visible, false},
         fpoke.animate_property(:visible, true),
-        fpoke.animate_property(:tone, [0,255], [0.2,0], [3,0])
-    )
-    animation_loop.add animation
-
-    # Reload pokemon, so loop begins with new ones 
-    animation = Animation::Container.new
-    animation.add(
-      Animation::Property.new(->(_){
-        load_forground_pokemon
-        # one graphics update with multipler 0, to prevent lag through the potentially long loading time of poke sprites
-        Graphics.time_multiplier = 0
-        Graphics.update
-        Graphics.time_multiplier = 1
-      }, Animation::Value_Curves::Constant.new(nil)),
-    )
-    animation_loop.add animation
-    final_animation.add animation_loop
-
-    final_animation.play_and_finish
+        fpoke.animate_property(:tone, [0,255], [0.2,0], [3,0]),
+        # Load new pokemon
+        Animation::Property.new(->(_){
+          load_forground_pokemon
+          # one graphics update with multipler 0, to prevent lag through the potentially long loading time of poke sprites
+          Graphics.time_multiplier = 0
+          Graphics.update
+          Graphics.time_multiplier = 1
+        }),
+        poke.animate_property(:opacity, 255),
+        poke2.animate_property(:opacity, 255),
+        repeats: -1
+      )
+    ).play_and_finish
+          
   end
 
   def getFusedPath(randpoke1, randpoke2)

@@ -465,58 +465,57 @@ end
 
 module Animation
   class Animation
-    attr_reader :duration
-    attr_reader :loop_duration
     attr_reader :repeats
-    attr_reader :start_time
-    attr_reader :started
+    attr_accessor :start_time
     attr_reader :name # Only for easing debugging
-    attr_accessor :finished
 
-    def initialize repeats=1, name: "".freeze
+    def initialize repeats: 1, duration: 0, name: "".freeze, debug: false
       if repeats > 0
         @repeats = repeats
       else
         @repeats = Float::INFINITY
       end
+      @duration = duration
       @name = name
-      @finished = false
       @times_played = 0
+      @debug = debug
     end
 
     def started time
-      return time >= @start_time
-    end
-
-    def mark_start time_stamp
-      return false if @start_time
-      @start_time = time_stamp
-      return true 
+      return not(@start_time.nil?)
     end
 
     def update time: Graphics.time
-      return if @finished
-      mark_start time
+      if @debug
+        binding.break
+      end
+      @start_time = time if not @start_time
       n_time = normalize_time time
       _update n_time
-      if not(running n_time) && finish_conditions
-        @finished = true
-        
+      finished = finish_condition n_time
+      if finished
         if @times_played+1 < @repeats
           @times_played += 1
-          on_loop
+          @start_time = time
+          on_loop n_time
+          return true
+        else
+          return false
         end
       end
-      return not(@finished)
+      return true
     end
 
     def to_s
       return @name=="" ? super : "#{@name}( start: #{@start_time}, dur: #{@duration})" 
     end
 
-    # Overwrite to reset everything that needs too on the beginning of a new loop
-    def on_loop
-      @finished = false
+    # Triggers everytime the finish conditions activates, but repeats are still left.
+    # Overwrite to reset everything that needs too on the beginning of a new loop.
+    def on_loop n_time
+    end
+
+    def dispose
     end
 
 
@@ -524,39 +523,28 @@ module Animation
 
     # Overwrite to implement actual animation
     def _update n_time
+      return false
     end
     
-    # Overwrite to set additional conditions that need to be fullfilled, in order to set the @finished variable
-    def finish_conditions
+    # Overwrite to signal when the animation is finished
+    def finish_condition n_time
       return true
     end
     
-    # The difference between @finshed and running is that running only looks at the time and determines if the given timepoint lies in start to duration.
-    # @finished, on the other hand, is set when the animation was updated at least once, while running determined that it should no longer run.
-    # That's also the reson why running is private and finished isn't.
-    # All extern checks that want to determine if the animation should run or not must use (not) animation.finished, to ensure that the animation was executed at least once at the last time point. 
-    def running time
-      # Delta check because multilple floats get summed up for time
-      return time < @duration - 0.0001
-    end
-
     def normalize_time time
-      # Otherwise infinte loops don't work. 0 * inf is NaN, not 0
-      if @duration.finite?
-        return time - @start_time - @duration * @times_played
-      else
-        return time - @start_time
-      end
+      return time - @start_time
     end
   end
-
+  
+  # An animation that on every animation frame, changes a single property of an object to the value determined by a supplied value curve of the form f(t)=v
+  # A getter method can be handed, to create a relative animation that only adds the values of the curve to the property value instead of replacing it.
   class Property < Animation 
-    def initialize setter, curve, getter: nil, repeats: 1
+    # no_skip: property animation has to play atleast once, even if the time frame defined by start and duration already expired.
+    # Allows for things like setting a specific value on one frame 
+    def initialize setter, curve = nil, getter: nil, repeats: 1, debug: false
       @setter = setter
       @curve = curve
       @getter = getter
-      @duration = curve.duration
-      @loop_duration = @duration * repeats
       # If a getter for the porperty is given, it is animated relativly. 
       if getter
         # Used to disect the property p into p=last_value+extern_change+animation
@@ -564,7 +552,7 @@ module Animation
         @last_property_value = current_value
         @last_property_set = current_value
       end
-      super repeats
+      super repeats: repeats, debug: debug
     end
 
     def to_s
@@ -575,9 +563,14 @@ module Animation
     private
     
     def _update n_time
-      n_time = n_time.clamp(0, @duration)
-      value = @curve.gen_value (n_time)
-      if @getter
+      # If no curve is given, just call the setter with nil.
+      if @curve
+        n_time = n_time.clamp(0, @curve.duration)
+        value = @curve.gen_value n_time
+      else
+        value = nil
+      end 
+      if @getter && @curve
         current_value = @getter.call
         extern_change = current_value - @last_property_set
         value += @last_property_value + extern_change
@@ -588,55 +581,33 @@ module Animation
         @setter.call value
       end
     end
+
+    def finish_condition n_time
+      if @curve
+        return n_time >= @curve.duration
+      else
+        return true
+      end
+    end
   end
 
   class Container < Animation
     attr_reader :animations
 
-    def initialize *animations, parallel: false, repeats: 1, name: "".freeze
-      super repeats, name: name
+    def initialize *animations, repeats: 1, name: "".freeze
+      super repeats: repeats, name: name
       @animations = animations
-      @parallel = parallel
-      @last_animation = nil
-      if not parallel
-        @first_anim_to_play = 0 
-      end
+      @fifo = []
+      @animations.each {|a| @fifo.push a}
     end
-
-    def add *animations
-      if @started
-        # TODO only raise when debug is active, to avoid unnecesarry crashes
-        raise StandardError.new "Can't add animation. Playing has already started."
-      else
-        @animations += animations 
-      end
-    end
-
+     
     def play_and_finish  
-      Graphics.update
-      while update
+      loop do 
         Graphics.update
-        user_skips?
+        running = update
+        break if not running
       end
       Graphics.update
-    end
-
-    def mark_start time
-      if !super || @animations.empty?
-        return false
-      end
-      @animations.each_with_index{|a,i| 
-        start = calc_start i
-        a.mark_start start
-      }
-      # Calculate our own duration
-      if @parallel
-        @last_animation = @animations.max {|a,b| a.loop_duration <=> b.loop_duration}
-      else
-        @last_animation = @animations[-1]
-      end
-      @duration = @last_animation.start_time + @last_animation.loop_duration
-      @loop_duration = @duration * @repeats
     end
 
     def to_s
@@ -644,88 +615,43 @@ module Animation
       info += "{\n"
       @animations.each {|a| info += "[" + a.to_s + "]" }
       info += "\n}"
-    end
+    end 
 
-    def dispose
-      @animations.each {|a| a.dispose}
-      @animations.clear
+    def on_loop n_time
       super
-    end
-
-    private
-
-    def _update n_time
-      if @parallel
-        @animations.each {|a| a.update time: n_time}
-      else
-        # Find first anim that isn't finished
-        i = @first_anim_to_play
-        should_play = -> (i) {@animations[i].started n_time and not @animations[i].finished}
-        @animations.each do
-          if should_play.call i
-            break
-          else
-            i = (i + 1) % @animations.length
-          end
-        end
-        @first_anim_to_play = i 
-        # Update all animations that already started and that are after the first not finished one
-        @animations.each do 
-          if not should_play.call i
-            break
-          else
-            @animations[i].update time: n_time
-            i = (i + 1) % @animations.length
-          end
-        end 
+      @fifo = []
+      @animations.each do |a|
+        @fifo.push a
+        a.on_loop n_time
       end
     end
 
-    def on_loop
-      super
-      @animations.each {|a| a.on_loop}
-    end
-
-    def finish_conditions
-      # Normally, all other animations should already be finished once the last animation did.
-      # But just to be sure, once the last finished, all others are also checked.
-      return @last_animation.finished && @animations.find{|a| not a.finished}.nil?
-    end
-
-    def calc_start i
-      if @parallel
-        return 0
-      else
-        if i == 0
-          return 0
-        else
-          prev_a = @animations[i-1]
-          return prev_a.start_time + prev_a.loop_duration
-        end
-      end
-    end
-
-    # While a container is supposed to have an easy and predictable controlflow, skipping animations is a common usecase, in example in the intro sequence or in textboxes.
-    def user_skips?
-      Input.update
-      skip = (skip_keys.map {|k| Input.press?k}).reduce false, :|
-      skip_reaction if skip
-    end
-
-    # This method can be overwritten to implement individual reactions for skipping.
-    # It is automatically called when the user presses a key defined in skip_keys while an animation plays,
-    def skip_reaction
-    end
-
-    def skip_keys
-      return [Input::C]
+    def finish_condition n_time
+      return @fifo.empty?
     end
   end
 
-  class PointBased < Container
-    def initialize setter, *points, interpolation: Value_Curves::Linear, repeats: 1
+  class Sequential < Container
+    def _update n_time
+      while @fifo[0] && not(@fifo[0].update time: n_time)
+        @fifo.shift
+      end
+    end
+  end
+
+  class Parralel < Container
+    # Schedule at the start of the last animation
+    def _update n_time
+      @fifo.each do |a|
+        @fifo.delete a if not(a.update time: n_time)
+      end
+    end
+  end
+
+  class PointBased < Sequential
+    def initialize setter, *points, interpolation: Value_Curves::Linear, getter: nil, repeats: 1, debug: false
       if not points[0].is_a? Array
-        animations = [Property.new(setter, Value_Curves::Constant.new(points[0]), repeats: repeats)] 
+        animations = [Property.new(setter, Value_Curves::Constant.new(points[0]))] 
       else
         points.sort! {|p1,p2| p1[0] <=> p2[0]}
         points.insert 0, [0,0] if points[0][0] != 0 
@@ -734,7 +660,7 @@ module Animation
           x1,x2 = p1[0],p2[0]
           y1,y2 = p1[1],p2[1]
           # Normalize to startime 0
-          animations.append Property.new(setter, interpolation.new([0,y1],[x2-x1,y2]), repeats: repeats)
+          animations.append Property.new(setter, interpolation.new([0,y1],[x2-x1,y2]), getter: getter, debug: debug)
         end
       end
       super(*animations, repeats: repeats)
@@ -835,24 +761,24 @@ module Animation
     class Animated_Sprite < Sprite
       
       attr_reader :animations
-      
-      def initialize *args, parallel: false
-        @animations = Container.new parallel: parallel
-        super(*args)
-      end
-      
-      def animate_property property, *points, interpolation: Value_Curves::Linear, relativ: false, repeats: 1
+            
+      def animate_property property, *points, interpolation: Value_Curves::Linear, relativ: false, repeats: 1, debug: false
         setter = gen_setter property
         getter = gen_getter property if relativ
-        return PointBased.new setter, *points, interpolation: interpolation, repeats: repeats
+        return PointBased.new setter, *points, interpolation: interpolation, getter: getter, repeats: repeats, debug: debug
+      end
+
+      def attach_animated_property property
+         property
+      end
+
+      def animate_and_attach_property property, *points, interpolation: Value_Curves::Linear, relativ: false, repeats: 1
+        @animation = animate_property property, *points, interpolation: interpolation, relativ: relativ, repeats: repeats
       end
 
       def update
-        @animations.update
-      end
-
-      def finished
-        return @animations.finished
+        @animation&.update
+        super
       end
 
       def change_origin origin
