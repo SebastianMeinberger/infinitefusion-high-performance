@@ -1,8 +1,7 @@
 module Battle::Animations
-  class BG_Slide < Animation::Container
+  class BG_Slide < Animation::Sequential
     def initialize time
-      super()
-      @bg = Animation::Implementations::Animated_Sprite.new
+      bg = Animation::Implementations::Animated_Sprite.new
       base_bitmap = pbBitmap generate_bitmap_path(time)
       # In order to have an image that is wide enough to slide it across the screen, but still have it fill it entierly, the bitmap is extended by its mirrored self on the left.
       w, h = base_bitmap.width, base_bitmap.height
@@ -10,9 +9,9 @@ module Battle::Animations
       extended_bitmap.stretch_blt Rect.new(0, 0, w*0.5, h), base_bitmap, Rect.new(w*0.5, 0, -w*0.5, h)
       extended_bitmap.stretch_blt Rect.new(w*0.5, 0, w, h), base_bitmap, Rect.new(0, 0, w, h)
 
-      @bg.bitmap = extended_bitmap
-      @bg.z = 99999
-      schedule_next @bg.animate_property :x, [1,-Graphics.width/2]
+      bg.bitmap = extended_bitmap
+      bg.z = 99999
+      super(bg.animate_property :x, [1,-Graphics.width/2])
     end
 
     def generate_bitmap_path time

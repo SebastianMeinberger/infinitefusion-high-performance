@@ -17,7 +17,8 @@ module Battle::Animations::Transitions
     end
 
     def initialize transition_duration, zoom_duration, squares, *properties, cx: 8, cy: 6
-      super()
+      animations = []
+      sprites_to_dispose = []
       w, h = Graphics.width/cx, Graphics.height/cy 
       x_pos = w/2
       squares.each do |col|
@@ -26,16 +27,16 @@ module Battle::Animations::Transitions
           if not start_time.nil?
             square = gen_black_square x: w, y: h
             square.zoom_x = 0
-            @sprites_to_dispose.append square
+            sprites_to_dispose.append square
             square.x = x_pos
             square.y = y_pos
-            animations = properties.map {|p| square.animate_property p, [zoom_duration,1]}
-            animations.each {|a| schedule_at a, start_time}
+            animations += properties.map {|p| square.animate_property p, [start_time,0], [start_time+zoom_duration,1]}
           end
           y_pos += h
         end
         x_pos += w
       end
+      super(sprites_to_dispose, *animations)
     end
   end
 

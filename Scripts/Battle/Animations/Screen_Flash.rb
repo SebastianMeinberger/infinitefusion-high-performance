@@ -1,8 +1,7 @@
 module Battle::Animations
-  class Screen_Flash < Animation::PointBased
-    include Battle::Constants
+  class Screen_Flash < Animation::PointBased 
     def initialize time, location
-      c = (time == NIGHT || location == CAVE) ? 0 : 255
+      c = (time == :night || location == :cave) ? 0 : 255
       viewport = Viewport.new(0,0,Graphics.width,Graphics.height)
       viewport.z = 99999
       viewport.color = Color.new c, c, c
